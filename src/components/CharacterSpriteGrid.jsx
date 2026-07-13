@@ -1,14 +1,17 @@
+import { useLanguage } from '../utils/i18n';
+
 export default function CharacterSpriteGrid({ character }) {
+  const { t } = useLanguage();
   if (!character) return null;
 
   if (character.status === 'pending') {
-    return <p className="text-xs text-slate-400">No sprites generated yet.</p>;
+    return <p className="text-xs text-slate-400">{t('spriteGrid.none')}</p>;
   }
   if (character.status === 'generating_sprites') {
-    return <p className="text-xs text-violet-600 font-semibold">🎨 Generating sprite set…</p>;
+    return <p className="text-xs text-violet-600 font-semibold">{t('spriteGrid.generating')}</p>;
   }
   if (character.status === 'error') {
-    return <p className="text-xs text-red-500">⚠ Sprite generation failed: {character.spriteError}</p>;
+    return <p className="text-xs text-red-500">{t('spriteGrid.failed', { error: character.spriteError })}</p>;
   }
 
   return (

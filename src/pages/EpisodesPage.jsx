@@ -5,21 +5,14 @@ import StepProgressDots from '../components/StepProgressDots';
 import EpisodePlayer from '../components/EpisodePlayer';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { setEpisodeProgress, useEpisodeProgress } from '../utils/episodeProgressStore';
+import { useLanguage } from '../utils/i18n';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const STEP_ORDER = ['script', 'sprites', 'backgrounds', 'tts', 'rendering', 'uploading'];
-const STEP_LABELS = {
-  pending: '⏳ Queued…',
-  script: '✍️ Writing script…',
-  sprites: '🎨 Generating character sprites…',
-  backgrounds: '🖼️ Generating scene backgrounds…',
-  tts: '🎙️ Recording narration…',
-  rendering: '🎬 Rendering video…',
-  uploading: '☁️ Uploading…',
-};
 
 function EpisodeCard({ episode, onRetry, onDelete }) {
+  const { t } = useLanguage();
   // Live status comes from the socket-fed store when available (updates without a refetch);
   // falls back to whatever was last loaded from the API for episodes the store hasn't heard
   // about yet (e.g. right after the initial page load, before any socket event has arrived).
@@ -44,13 +37,16 @@ function EpisodeCard({ episode, onRetry, onDelete }) {
     }
   }
 
+  const titleSuffix = episode.title ? ` — ${episode.title}` : '';
+  const stepLabels = Object.fromEntries(STEP_ORDER.map(s => [s, t(`episodeSteps.${s}`)]));
+
   return (
     <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-soft flex flex-col gap-2">
       <ConfirmDialog
         open={confirmingDelete}
-        title="Delete this episode?"
-        message={`Ep. ${episode.episodeNumber}${episode.title ? ` — ${episode.title}` : ''} and its rendered video will be permanently removed.`}
-        confirmLabel="Delete episode"
+        title={t('episodes.deleteEpisodeTitle')}
+        message={t('episodes.deleteEpisodeMessage', { number: episode.episodeNumber, titleSuffix })}
+        confirmLabel={t('episodes.deleteEpisodeConfirm')}
         loading={deleting}
         error={deleteError}
         onConfirm={handleConfirmDelete}
@@ -58,38 +54,38 @@ function EpisodeCard({ episode, onRetry, onDelete }) {
       />
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-bold text-slate-900">
-          Ep. {episode.episodeNumber}{episode.title ? ` — ${episode.title}` : ''}
+          Ep. {episode.episodeNumber}{titleSuffix}
         </p>
         {!inProgress && (
           <button
             onClick={() => setConfirmingDelete(true)}
             className="text-[11px] font-semibold px-3 py-1 rounded-full ring-1 ring-inset ring-slate-200 text-slate-400 hover:text-red-500 hover:ring-red-200 transition-colors whitespace-nowrap"
           >
-            🗑 Delete
+            {t('episodes.deleteEpisode')}
           </button>
         )}
       </div>
       <p className="text-xs text-slate-400">{episode.premise}</p>
 
       {inProgress && (
-        <StepProgressDots steps={STEP_ORDER} currentStep={status} labels={{ ...STEP_LABELS, [status]: statusDetail || STEP_LABELS[status] }} />
+        <StepProgressDots steps={STEP_ORDER} currentStep={status} labels={{ ...stepLabels, [status]: statusDetail || stepLabels[status] }} />
       )}
 
       {status === 'error' && (
         <div className="flex flex-col gap-1.5">
-          <p className="text-xs text-red-500">⚠ {episode.errorMessage || 'Something went wrong.'}</p>
+          <p className="text-xs text-red-500">⚠ {episode.errorMessage || t('episodes.errorFallback')}</p>
           <button
             onClick={() => onRetry(episode._id)}
             className="self-start text-[11px] font-semibold px-3 py-1 rounded-full ring-1 ring-inset ring-reel/40 text-reel hover:bg-violet-50 transition-colors"
           >
-            🔄 Retry
+            {t('episodes.retry')}
           </button>
         </div>
       )}
 
       {status === 'done' && episode.scenes?.length > 0 && (
         <details className="text-xs text-slate-500">
-          <summary className="cursor-pointer font-semibold text-slate-600">Script ({episode.scenes.length} scenes)</summary>
+          <summary className="cursor-pointer font-semibold text-slate-600">{t('episodes.scriptSummary', { count: episode.scenes.length })}</summary>
           <div className="mt-2 flex flex-col gap-2">
             {episode.scenes.map((s, i) => (
               <div key={i} className="pl-2 border-l-2 border-slate-100">
@@ -106,6 +102,7 @@ function EpisodeCard({ episode, onRetry, onDelete }) {
 }
 
 export default function EpisodesPage() {
+  const { t } = useLanguage();
   const [seriesList, setSeriesList] = useState([]);
   const [selectedSeriesId, setSelectedSeriesId] = useState(null);
   const [episodes, setEpisodes] = useState([]);
@@ -188,11 +185,11 @@ export default function EpisodesPage() {
 
   return (
     <div className="px-3 py-4 md:px-6 md:py-7 max-w-[1600px] mx-auto">
-      <h1 className="text-lg font-bold text-slate-900 mb-1">Episodes</h1>
-      <p className="text-sm text-slate-400 mb-4">Pitch one line — the pipeline writes the script, generates art, records narration, and renders the video.</p>
+      <h1 className="text-lg font-bold text-slate-900 mb-1">{t('episodes.heading')}</h1>
+      <p className="text-sm text-slate-400 mb-4">{t('episodes.subtitle')}</p>
 
       {seriesList.length === 0 ? (
-        <p className="text-sm text-slate-400">No series yet — create one on the Series tab first.</p>
+        <p className="text-sm text-slate-400">{t('episodes.noSeries')}</p>
       ) : (
         <>
           <div className="flex items-center gap-2 flex-wrap mb-4">
@@ -211,7 +208,7 @@ export default function EpisodesPage() {
 
           <form onSubmit={createEpisode} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-card mb-6 flex flex-col gap-3 max-w-xl">
             <textarea
-              placeholder="What happens in this episode? e.g. 'Ruso gets lost and a wise old owl helps him find his way home.'"
+              placeholder={t('episodes.premisePlaceholder')}
               value={premise}
               onChange={e => setPremise(e.target.value)}
               rows={2}
@@ -223,14 +220,14 @@ export default function EpisodesPage() {
               type="submit" disabled={creating || !premise.trim()}
               className="self-start px-4 py-2 bg-gradient-to-b from-violet-400 to-reel text-white font-bold text-sm rounded-xl hover:brightness-105 active:scale-[0.98] disabled:opacity-50 transition-all shadow-soft"
             >
-              {creating ? 'Starting…' : '🎬 Create episode'}
+              {creating ? t('episodes.starting') : t('episodes.createEpisode')}
             </button>
           </form>
 
           {loadingEpisodes ? (
-            <p className="text-sm text-slate-400">Loading…</p>
+            <p className="text-sm text-slate-400">{t('common.loading')}</p>
           ) : episodes.length === 0 ? (
-            <p className="text-sm text-slate-400">No episodes yet — pitch one above.</p>
+            <p className="text-sm text-slate-400">{t('episodes.noEpisodes')}</p>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
               {episodes.map(ep => <EpisodeCard key={ep._id} episode={ep} onRetry={retryEpisode} onDelete={deleteEpisode} />)}

@@ -1,11 +1,14 @@
+import { useLanguage } from '../utils/i18n';
+
 // Centered modal confirmation — deliberately NOT an inline button swap.
 // An inline Yes/No that appears where the trigger button was is a mis-click trap:
 // a second/accidental click lands on "Yes" before anyone reads what it does.
 // A modal forces a deliberate action in a different location on screen.
 export default function ConfirmDialog({
-  open, title, message, confirmLabel = 'Yes, continue', cancelLabel = 'Cancel',
+  open, title, message, confirmLabel = 'Yes, continue', cancelLabel,
   danger = true, loading = false, error = null, onConfirm, onCancel,
 }) {
+  const { t } = useLanguage();
   if (!open) return null;
 
   return (
@@ -28,7 +31,7 @@ export default function ConfirmDialog({
             disabled={loading}
             className="text-xs font-semibold px-3.5 py-2 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors disabled:opacity-50"
           >
-            {cancelLabel}
+            {cancelLabel || t('common.cancel')}
           </button>
           <button
             onClick={onConfirm}

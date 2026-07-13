@@ -5,6 +5,7 @@ import CharacterSpriteGrid from '../components/CharacterSpriteGrid';
 import StepProgressDots from '../components/StepProgressDots';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { setCharacterProgress, useCharacterProgress } from '../utils/characterProgressStore';
+import { useLanguage } from '../utils/i18n';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -16,15 +17,9 @@ const VOICE_LOCALES = [
 // Mirrors EXPRESSIONS in backend/utils/youtube/claudeScript.js — one sprite generated per
 // expression, sequentially, at Pollinations' rate limit (~16s apart).
 const SPRITE_STEPS = ['neutral', 'happy', 'sad', 'surprised', 'action'];
-const SPRITE_LABELS = {
-  neutral: '😐 Neutral pose…',
-  happy: '😊 Happy pose…',
-  sad: '😢 Sad pose…',
-  surprised: '😲 Surprised pose…',
-  action: '🏃 Action pose…',
-};
 
 function CharacterCard({ character, generating, onGenerateSprites, onDelete }) {
+  const { t } = useLanguage();
   const live = useCharacterProgress(character._id);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -43,13 +38,15 @@ function CharacterCard({ character, generating, onGenerateSprites, onDelete }) {
     }
   }
 
+  const spriteLabels = Object.fromEntries(SPRITE_STEPS.map(s => [s, t(`spriteSteps.${s}`)]));
+
   return (
     <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-soft flex flex-col gap-2">
       <ConfirmDialog
         open={confirmingDelete}
-        title="Delete this character?"
-        message={`${character.name} and all of its generated sprites will be permanently removed. Episodes already rendered with them are unaffected.`}
-        confirmLabel="Delete character"
+        title={t('series.deleteCharacterTitle')}
+        message={t('series.deleteCharacterMessage', { name: character.name })}
+        confirmLabel={t('series.deleteCharacterConfirm')}
         loading={deleting}
         error={deleteError}
         onConfirm={handleConfirmDelete}
@@ -63,20 +60,20 @@ function CharacterCard({ character, generating, onGenerateSprites, onDelete }) {
               onClick={() => onGenerateSprites(character._id)}
               className="text-[11px] font-semibold px-3 py-1 rounded-full bg-reel text-white hover:bg-reel-dark transition-colors whitespace-nowrap"
             >
-              🎨 Generate sprites
+              {t('series.generateSprites')}
             </button>
           )}
           <button
             onClick={() => setConfirmingDelete(true)}
             className="text-[11px] font-semibold px-3 py-1 rounded-full ring-1 ring-inset ring-slate-200 text-slate-400 hover:text-red-500 hover:ring-red-200 transition-colors whitespace-nowrap"
           >
-            🗑 Delete
+            {t('series.deleteCharacter')}
           </button>
         </div>
       </div>
       <p className="text-xs text-slate-400">{character.description}</p>
       {generating && (
-        <StepProgressDots steps={SPRITE_STEPS} currentStep={live.expression} labels={SPRITE_LABELS} />
+        <StepProgressDots steps={SPRITE_STEPS} currentStep={live.expression} labels={spriteLabels} />
       )}
       <CharacterSpriteGrid character={character} />
     </div>
@@ -84,6 +81,7 @@ function CharacterCard({ character, generating, onGenerateSprites, onDelete }) {
 }
 
 export default function SeriesPage() {
+  const { t } = useLanguage();
   const [seriesList, setSeriesList] = useState([]);
   const [loadingSeries, setLoadingSeries] = useState(true);
   const [selectedSeriesId, setSelectedSeriesId] = useState(null);
@@ -197,13 +195,13 @@ export default function SeriesPage() {
 
   return (
     <div className="px-3 py-4 md:px-6 md:py-7 max-w-[1600px] mx-auto">
-      <h1 className="text-lg font-bold text-slate-900 mb-1">Series &amp; Characters</h1>
-      <p className="text-sm text-slate-400 mb-4">Set up a story world once — characters keep the same look across every episode.</p>
+      <h1 className="text-lg font-bold text-slate-900 mb-1">{t('series.heading')}</h1>
+      <p className="text-sm text-slate-400 mb-4">{t('series.subtitle')}</p>
 
       {/* ── Series list + picker ── */}
       <div className="flex items-center gap-2 flex-wrap mb-4">
         {loadingSeries ? (
-          <p className="text-sm text-slate-400">Loading…</p>
+          <p className="text-sm text-slate-400">{t('common.loading')}</p>
         ) : (
           seriesList.map(s => (
             <button
@@ -221,26 +219,26 @@ export default function SeriesPage() {
           onClick={() => setShowNewSeries(v => !v)}
           className="px-3 py-1.5 rounded-full text-sm font-semibold bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors"
         >
-          + New series
+          {t('series.newSeries')}
         </button>
       </div>
 
       {showNewSeries && (
         <form onSubmit={createSeries} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-card mb-6 flex flex-col gap-3 max-w-xl animate-slide-up">
           <input
-            type="text" placeholder="Series title" value={newSeries.title}
+            type="text" placeholder={t('series.titlePlaceholder')} value={newSeries.title}
             onChange={e => setNewSeries(v => ({ ...v, title: e.target.value }))}
             className="px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10"
           />
           <textarea
-            placeholder="Premise — a one-paragraph pitch for the whole series" value={newSeries.premise}
+            placeholder={t('series.premisePlaceholder')} value={newSeries.premise}
             onChange={e => setNewSeries(v => ({ ...v, premise: e.target.value }))}
             rows={2}
             className="px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10 resize-none"
           />
           <div className="flex gap-2 flex-wrap">
             <input
-              type="text" placeholder="Genre (optional)" value={newSeries.genre}
+              type="text" placeholder={t('series.genrePlaceholder')} value={newSeries.genre}
               onChange={e => setNewSeries(v => ({ ...v, genre: e.target.value }))}
               className="flex-1 min-w-[140px] px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10"
             />
@@ -253,12 +251,12 @@ export default function SeriesPage() {
             </select>
           </div>
           <input
-            type="text" placeholder="Tone (optional) — e.g. gentle, whimsical, funny" value={newSeries.tone}
+            type="text" placeholder={t('series.tonePlaceholder')} value={newSeries.tone}
             onChange={e => setNewSeries(v => ({ ...v, tone: e.target.value }))}
             className="px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10"
           />
           <input
-            type="text" placeholder="Art style (optional) — e.g. flat vector cartoon, pastel colors" value={newSeries.artStyle}
+            type="text" placeholder={t('series.artStylePlaceholder')} value={newSeries.artStyle}
             onChange={e => setNewSeries(v => ({ ...v, artStyle: e.target.value }))}
             className="px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10"
           />
@@ -267,7 +265,7 @@ export default function SeriesPage() {
             type="submit" disabled={creatingSeries}
             className="self-start px-4 py-2 bg-reel text-white font-bold text-sm rounded-xl hover:bg-reel-dark active:scale-[0.98] disabled:opacity-50 transition-all"
           >
-            {creatingSeries ? 'Creating…' : 'Create series'}
+            {creatingSeries ? t('series.creating') : t('series.createSeries')}
           </button>
         </form>
       )}
@@ -276,31 +274,31 @@ export default function SeriesPage() {
       {selectedSeries && (
         <div className="mt-2">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Characters — {selectedSeries.title}</h2>
+            <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider">{t('series.charactersHeading', { title: selectedSeries.title })}</h2>
             <button
               onClick={() => setShowNewCharacter(v => !v)}
               className="px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors"
             >
-              + New character
+              {t('series.newCharacter')}
             </button>
           </div>
 
           {showNewCharacter && (
             <form onSubmit={createCharacter} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-card mb-4 flex flex-col gap-3 max-w-xl animate-slide-up">
               <input
-                type="text" placeholder="Character name" value={newCharacter.name}
+                type="text" placeholder={t('series.namePlaceholder')} value={newCharacter.name}
                 onChange={e => setNewCharacter(v => ({ ...v, name: e.target.value }))}
                 className="px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10"
               />
               <textarea
-                placeholder="Locked visual description — be specific, this is reused in every sprite image forever (e.g. 'a friendly young cartoon fox, orange fur, cream belly, big round brown eyes')"
+                placeholder={t('series.descriptionPlaceholder')}
                 value={newCharacter.description}
                 onChange={e => setNewCharacter(v => ({ ...v, description: e.target.value }))}
                 rows={3}
                 className="px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10 resize-none"
               />
               <input
-                type="text" placeholder="edge-tts voice name (e.g. en-US-AvaNeural, th-TH-PremwadeeNeural)"
+                type="text" placeholder={t('series.voiceNamePlaceholder')}
                 value={newCharacter.voiceName}
                 onChange={e => setNewCharacter(v => ({ ...v, voiceName: e.target.value }))}
                 className="px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10"
@@ -310,15 +308,15 @@ export default function SeriesPage() {
                 type="submit" disabled={creatingCharacter}
                 className="self-start px-4 py-2 bg-reel text-white font-bold text-sm rounded-xl hover:bg-reel-dark active:scale-[0.98] disabled:opacity-50 transition-all"
               >
-                {creatingCharacter ? 'Creating…' : 'Create character'}
+                {creatingCharacter ? t('series.creating') : t('series.createCharacter')}
               </button>
             </form>
           )}
 
           {loadingCharacters ? (
-            <p className="text-sm text-slate-400">Loading…</p>
+            <p className="text-sm text-slate-400">{t('common.loading')}</p>
           ) : characters.length === 0 ? (
-            <p className="text-sm text-slate-400">No characters yet — add one above.</p>
+            <p className="text-sm text-slate-400">{t('series.noCharacters')}</p>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
               {characters.map(c => (
