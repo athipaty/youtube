@@ -35,6 +35,10 @@ const TRANSLATIONS = {
     'series.deleteCharacterTitle': 'Delete this character?',
     'series.deleteCharacterMessage': '{name} and all of its generated sprites will be permanently removed. Episodes already rendered with them are unaffected.',
     'series.deleteCharacterConfirm': 'Delete character',
+    'series.deleteSeries': '🗑 Delete series',
+    'series.deleteSeriesTitle': 'Delete this series?',
+    'series.deleteSeriesMessage': '{title} and every character/episode still in it will be permanently removed, including rendered videos.',
+    'series.deleteSeriesConfirm': 'Delete series',
 
     'spriteSteps.neutral': '😐 Neutral pose…',
     'spriteSteps.happy': '😊 Happy pose…',
@@ -100,6 +104,10 @@ const TRANSLATIONS = {
     'series.deleteCharacterTitle': 'ลบตัวละครนี้หรือไม่?',
     'series.deleteCharacterMessage': '{name} และภาพสไปรต์ทั้งหมดที่สร้างไว้จะถูกลบถาวร ตอนที่เรนเดอร์ไปแล้วจะไม่ได้รับผลกระทบ',
     'series.deleteCharacterConfirm': 'ลบตัวละคร',
+    'series.deleteSeries': '🗑 ลบซีรีส์',
+    'series.deleteSeriesTitle': 'ลบซีรีส์นี้หรือไม่?',
+    'series.deleteSeriesMessage': '{title} และตัวละคร/ตอนทั้งหมดที่ยังอยู่ในซีรีส์นี้จะถูกลบถาวร รวมถึงวิดีโอที่เรนเดอร์แล้วด้วย',
+    'series.deleteSeriesConfirm': 'ลบซีรีส์',
 
     'spriteSteps.neutral': '😐 ท่าปกติ…',
     'spriteSteps.happy': '😊 ท่ายิ้ม…',

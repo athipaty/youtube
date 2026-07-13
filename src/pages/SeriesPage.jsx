@@ -107,6 +107,11 @@ export default function SeriesPage() {
   const [generatingSpritesFor, setGeneratingSpritesFor] = useState(null);
   const socketRef = useRef(null);
 
+  // Deleting the selected series
+  const [confirmingDeleteSeries, setConfirmingDeleteSeries] = useState(false);
+  const [deletingSeries, setDeletingSeries] = useState(false);
+  const [deleteSeriesError, setDeleteSeriesError] = useState(null);
+
   // Live sprite-generation progress — same connection pattern as EpisodesPage.jsx.
   useEffect(() => {
     socketRef.current = io(API);
@@ -191,6 +196,24 @@ export default function SeriesPage() {
     setCharacters(prev => prev.filter(c => c._id !== characterId));
   }
 
+  async function handleConfirmDeleteSeries() {
+    setDeletingSeries(true);
+    setDeleteSeriesError(null);
+    try {
+      await axios.delete(`${API}/api/youtube/series/${selectedSeriesId}`);
+      setSeriesList(prev => {
+        const next = prev.filter(s => s._id !== selectedSeriesId);
+        setSelectedSeriesId(next.length ? next[0]._id : null);
+        return next;
+      });
+      setConfirmingDeleteSeries(false);
+    } catch (err) {
+      setDeleteSeriesError(err.response?.data?.error || 'Failed to delete series');
+    } finally {
+      setDeletingSeries(false);
+    }
+  }
+
   const selectedSeries = seriesList.find(s => s._id === selectedSeriesId);
 
   return (
@@ -273,14 +296,32 @@ export default function SeriesPage() {
       {/* ── Characters for the selected series ── */}
       {selectedSeries && (
         <div className="mt-2">
+          <ConfirmDialog
+            open={confirmingDeleteSeries}
+            title={t('series.deleteSeriesTitle')}
+            message={t('series.deleteSeriesMessage', { title: selectedSeries.title })}
+            confirmLabel={t('series.deleteSeriesConfirm')}
+            loading={deletingSeries}
+            error={deleteSeriesError}
+            onConfirm={handleConfirmDeleteSeries}
+            onCancel={() => { setConfirmingDeleteSeries(false); setDeleteSeriesError(null); }}
+          />
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider">{t('series.charactersHeading', { title: selectedSeries.title })}</h2>
-            <button
-              onClick={() => setShowNewCharacter(v => !v)}
-              className="px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors"
-            >
-              {t('series.newCharacter')}
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setShowNewCharacter(v => !v)}
+                className="px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors"
+              >
+                {t('series.newCharacter')}
+              </button>
+              <button
+                onClick={() => setConfirmingDeleteSeries(true)}
+                className="px-3 py-1.5 rounded-full text-xs font-semibold ring-1 ring-inset ring-slate-200 text-slate-400 hover:text-red-500 hover:ring-red-200 transition-colors whitespace-nowrap"
+              >
+                {t('series.deleteSeries')}
+              </button>
+            </div>
           </div>
 
           {showNewCharacter && (
