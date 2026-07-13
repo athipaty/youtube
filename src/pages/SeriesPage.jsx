@@ -1,6 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { io } from 'socket.io-client';
 import axios from 'axios';
 import CharacterSpriteGrid from '../components/CharacterSpriteGrid';
+import StepProgressDots from '../components/StepProgressDots';
+import ConfirmDialog from '../components/ConfirmDialog';
+import { setCharacterProgress, useCharacterProgress } from '../utils/characterProgressStore';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -8,6 +12,76 @@ const VOICE_LOCALES = [
   { value: 'en-US', label: 'English (US)' },
   { value: 'th-TH', label: 'ไทย (Thai)' },
 ];
+
+// Mirrors EXPRESSIONS in backend/utils/youtube/claudeScript.js — one sprite generated per
+// expression, sequentially, at Pollinations' rate limit (~16s apart).
+const SPRITE_STEPS = ['neutral', 'happy', 'sad', 'surprised', 'action'];
+const SPRITE_LABELS = {
+  neutral: '😐 Neutral pose…',
+  happy: '😊 Happy pose…',
+  sad: '😢 Sad pose…',
+  surprised: '😲 Surprised pose…',
+  action: '🏃 Action pose…',
+};
+
+function CharacterCard({ character, generating, onGenerateSprites, onDelete }) {
+  const live = useCharacterProgress(character._id);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
+
+  async function handleConfirmDelete() {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await onDelete(character._id);
+      setConfirmingDelete(false);
+    } catch (err) {
+      setDeleteError(err.response?.data?.error || 'Failed to delete character');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-soft flex flex-col gap-2">
+      <ConfirmDialog
+        open={confirmingDelete}
+        title="Delete this character?"
+        message={`${character.name} and all of its generated sprites will be permanently removed. Episodes already rendered with them are unaffected.`}
+        confirmLabel="Delete character"
+        loading={deleting}
+        error={deleteError}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => { setConfirmingDelete(false); setDeleteError(null); }}
+      />
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-bold text-slate-900">{character.name}</p>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {character.status !== 'ready' && !generating && (
+            <button
+              onClick={() => onGenerateSprites(character._id)}
+              className="text-[11px] font-semibold px-3 py-1 rounded-full bg-reel text-white hover:bg-reel-dark transition-colors whitespace-nowrap"
+            >
+              🎨 Generate sprites
+            </button>
+          )}
+          <button
+            onClick={() => setConfirmingDelete(true)}
+            className="text-[11px] font-semibold px-3 py-1 rounded-full ring-1 ring-inset ring-slate-200 text-slate-400 hover:text-red-500 hover:ring-red-200 transition-colors whitespace-nowrap"
+          >
+            🗑 Delete
+          </button>
+        </div>
+      </div>
+      <p className="text-xs text-slate-400">{character.description}</p>
+      {generating && (
+        <StepProgressDots steps={SPRITE_STEPS} currentStep={live.expression} labels={SPRITE_LABELS} />
+      )}
+      <CharacterSpriteGrid character={character} />
+    </div>
+  );
+}
 
 export default function SeriesPage() {
   const [seriesList, setSeriesList] = useState([]);
@@ -33,6 +107,17 @@ export default function SeriesPage() {
   // character id so multiple "Generate sprites" clicks across different characters don't
   // interfere with each other.
   const [generatingSpritesFor, setGeneratingSpritesFor] = useState(null);
+  const socketRef = useRef(null);
+
+  // Live sprite-generation progress — same connection pattern as EpisodesPage.jsx.
+  useEffect(() => {
+    socketRef.current = io(API);
+    const socket = socketRef.current;
+    socket.on('character:progress', ({ characterId, expression }) => {
+      setCharacterProgress(characterId, { expression });
+    });
+    return () => socket.disconnect();
+  }, []);
 
   async function loadSeries() {
     try {
@@ -101,6 +186,11 @@ export default function SeriesPage() {
     } finally {
       setGeneratingSpritesFor(null);
     }
+  }
+
+  async function deleteCharacter(characterId) {
+    await axios.delete(`${API}/api/youtube/characters/${characterId}`);
+    setCharacters(prev => prev.filter(c => c._id !== characterId));
   }
 
   const selectedSeries = seriesList.find(s => s._id === selectedSeriesId);
@@ -232,22 +322,13 @@ export default function SeriesPage() {
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
               {characters.map(c => (
-                <div key={c._id} className="bg-white border border-slate-100 rounded-2xl p-4 shadow-soft flex flex-col gap-2">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-bold text-slate-900">{c.name}</p>
-                    {c.status !== 'ready' && (
-                      <button
-                        onClick={() => generateSprites(c._id)}
-                        disabled={generatingSpritesFor === c._id}
-                        className="text-[11px] font-semibold px-3 py-1 rounded-full bg-reel text-white hover:bg-reel-dark disabled:opacity-50 transition-colors whitespace-nowrap"
-                      >
-                        {generatingSpritesFor === c._id ? '🎨 Generating…' : '🎨 Generate sprites'}
-                      </button>
-                    )}
-                  </div>
-                  <p className="text-xs text-slate-400">{c.description}</p>
-                  <CharacterSpriteGrid character={c} />
-                </div>
+                <CharacterCard
+                  key={c._id}
+                  character={c}
+                  generating={generatingSpritesFor === c._id}
+                  onGenerateSprites={generateSprites}
+                  onDelete={deleteCharacter}
+                />
               ))}
             </div>
           )}

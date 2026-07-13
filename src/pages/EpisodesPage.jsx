@@ -3,6 +3,7 @@ import { io } from 'socket.io-client';
 import axios from 'axios';
 import StepProgressDots from '../components/StepProgressDots';
 import EpisodePlayer from '../components/EpisodePlayer';
+import ConfirmDialog from '../components/ConfirmDialog';
 import { setEpisodeProgress, useEpisodeProgress } from '../utils/episodeProgressStore';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -18,7 +19,7 @@ const STEP_LABELS = {
   uploading: '☁️ Uploading…',
 };
 
-function EpisodeCard({ episode, onRetry }) {
+function EpisodeCard({ episode, onRetry, onDelete }) {
   // Live status comes from the socket-fed store when available (updates without a refetch);
   // falls back to whatever was last loaded from the API for episodes the store hasn't heard
   // about yet (e.g. right after the initial page load, before any socket event has arrived).
@@ -26,13 +27,47 @@ function EpisodeCard({ episode, onRetry }) {
   const status = live.status || episode.status;
   const statusDetail = live.statusDetail || episode.statusDetail;
   const inProgress = status && !['done', 'error'].includes(status);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
+
+  async function handleConfirmDelete() {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await onDelete(episode._id);
+      setConfirmingDelete(false);
+    } catch (err) {
+      setDeleteError(err.response?.data?.error || 'Failed to delete episode');
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   return (
     <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-soft flex flex-col gap-2">
-      <div className="flex items-center justify-between">
+      <ConfirmDialog
+        open={confirmingDelete}
+        title="Delete this episode?"
+        message={`Ep. ${episode.episodeNumber}${episode.title ? ` — ${episode.title}` : ''} and its rendered video will be permanently removed.`}
+        confirmLabel="Delete episode"
+        loading={deleting}
+        error={deleteError}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => { setConfirmingDelete(false); setDeleteError(null); }}
+      />
+      <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-bold text-slate-900">
           Ep. {episode.episodeNumber}{episode.title ? ` — ${episode.title}` : ''}
         </p>
+        {!inProgress && (
+          <button
+            onClick={() => setConfirmingDelete(true)}
+            className="text-[11px] font-semibold px-3 py-1 rounded-full ring-1 ring-inset ring-slate-200 text-slate-400 hover:text-red-500 hover:ring-red-200 transition-colors whitespace-nowrap"
+          >
+            🗑 Delete
+          </button>
+        )}
       </div>
       <p className="text-xs text-slate-400">{episode.premise}</p>
 
@@ -146,6 +181,11 @@ export default function EpisodesPage() {
     } catch { /* the card's own error state stays visible either way */ }
   }
 
+  async function deleteEpisode(episodeId) {
+    await axios.delete(`${API}/api/youtube/episodes/${episodeId}`);
+    setEpisodes(prev => prev.filter(e => e._id !== episodeId));
+  }
+
   return (
     <div className="px-3 py-4 md:px-6 md:py-7 max-w-[1600px] mx-auto">
       <h1 className="text-lg font-bold text-slate-900 mb-1">Episodes</h1>
@@ -193,7 +233,7 @@ export default function EpisodesPage() {
             <p className="text-sm text-slate-400">No episodes yet — pitch one above.</p>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-              {episodes.map(ep => <EpisodeCard key={ep._id} episode={ep} onRetry={retryEpisode} />)}
+              {episodes.map(ep => <EpisodeCard key={ep._id} episode={ep} onRetry={retryEpisode} onDelete={deleteEpisode} />)}
             </div>
           )}
         </>
