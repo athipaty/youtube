@@ -46,6 +46,19 @@ const COLORS = [
   { value: 'gray', en: 'Gray', th: 'เทา' },
   { value: 'gold', en: 'Gold', th: 'ทอง' },
 ];
+const SKIN_TONES = [
+  { value: 'fair', en: 'Fair', th: 'ขาวซีด' },
+  { value: 'light', en: 'Light', th: 'ขาว' },
+  { value: 'medium', en: 'Medium', th: 'สีผิวปานกลาง' },
+  { value: 'olive', en: 'Olive', th: 'โทนแทนอมเขียว' },
+  { value: 'tan', en: 'Tan', th: 'แทน' },
+  { value: 'brown', en: 'Brown', th: 'น้ำตาล' },
+  { value: 'dark', en: 'Dark', th: 'เข้ม' },
+  { value: 'green', en: 'Green (fantasy)', th: 'เขียว (แฟนตาซี)' },
+  { value: 'blue', en: 'Blue (fantasy)', th: 'ฟ้า (แฟนตาซี)' },
+  { value: 'purple', en: 'Purple (fantasy)', th: 'ม่วง (แฟนตาซี)' },
+  { value: 'gray', en: 'Gray (fantasy)', th: 'เทา (แฟนตาซี)' },
+];
 const HAIR_STYLES = [
   { value: 'short', en: 'Short', th: 'สั้น' },
   { value: 'long', en: 'Long', th: 'ยาว' },
@@ -96,6 +109,7 @@ const DEFAULT_ATTRS = {
   gender: 'unspecified',
   age: 'adult',
   build: 'average',
+  skinColor: '',
   bodyColor: '',
   hairStyle: '',
   eyeColor: '',
@@ -129,6 +143,11 @@ export function composeDescription(a) {
 
   const buildLabel = findOpt(BUILDS, a.build)?.en.toLowerCase();
   if (buildLabel) parts.push(`${buildLabel} build`);
+
+  const showsSkin = a.species === 'human' || a.species === 'fantasy';
+  if (showsSkin && a.skinColor) {
+    parts.push(`${findOpt(SKIN_TONES, a.skinColor).en.toLowerCase()} skin`);
+  }
 
   const isRobotOrObject = a.species === 'robot' || a.species === 'object';
   if (!isRobotOrObject) {
@@ -226,6 +245,7 @@ export default function CharacterAttributePicker({ onChange, onManualToggle }) {
 
   const showHair = attrs.species !== 'robot' && attrs.species !== 'object';
   const showEyes = attrs.species !== 'object';
+  const showSkin = attrs.species === 'human' || attrs.species === 'fantasy';
 
   return (
     <div className="flex flex-col gap-3">
@@ -258,6 +278,14 @@ export default function CharacterAttributePicker({ onChange, onManualToggle }) {
             {BUILDS.map(o => <option key={o.value} value={o.value}>{label(o, lang)}</option>)}
           </select>
         </Field>
+        {showSkin && (
+          <Field label={t('attrPicker.skinColor')}>
+            <select className={selectClass()} value={attrs.skinColor} onChange={e => set('skinColor', e.target.value)}>
+              <option value="">{t('attrPicker.pick')}</option>
+              {SKIN_TONES.map(o => <option key={o.value} value={o.value}>{label(o, lang)}</option>)}
+            </select>
+          </Field>
+        )}
         <Field label={t('attrPicker.bodyColor')}>
           <select className={selectClass()} value={attrs.bodyColor} onChange={e => set('bodyColor', e.target.value)}>
             <option value="">{t('attrPicker.pick')}</option>

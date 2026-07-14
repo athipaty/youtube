@@ -19,12 +19,13 @@ const VOICE_LOCALES = [
 // expression, sequentially, at Pollinations' rate limit (~16s apart).
 const SPRITE_STEPS = ['neutral', 'happy', 'sad', 'surprised', 'action'];
 
-function CharacterCard({ character, generating, onGenerateSprites, onDelete }) {
+function CharacterCard({ character, generating, onGenerateSprites, onDelete, onRegenerateSprite }) {
   const { t } = useLanguage();
   const live = useCharacterProgress(character._id);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
+  const [regeneratingExpression, setRegeneratingExpression] = useState(null);
 
   async function handleConfirmDelete() {
     setDeleting(true);
@@ -36,6 +37,17 @@ function CharacterCard({ character, generating, onGenerateSprites, onDelete }) {
       setDeleteError(err.response?.data?.error || 'Failed to delete character');
     } finally {
       setDeleting(false);
+    }
+  }
+
+  async function handleRegenerate(expression) {
+    setRegeneratingExpression(expression);
+    try {
+      await onRegenerateSprite(character._id, expression);
+    } catch {
+      // swallow — the sprite tile just stays as it was, nothing else to reconcile here
+    } finally {
+      setRegeneratingExpression(null);
     }
   }
 
@@ -76,7 +88,11 @@ function CharacterCard({ character, generating, onGenerateSprites, onDelete }) {
       {generating && (
         <StepProgressDots steps={SPRITE_STEPS} currentStep={live.expression} labels={spriteLabels} />
       )}
-      <CharacterSpriteGrid character={character} />
+      <CharacterSpriteGrid
+        character={character}
+        regeneratingExpression={regeneratingExpression}
+        onRegenerate={!generating && (character.status === 'ready' || character.status === 'error') ? handleRegenerate : null}
+      />
     </div>
   );
 }
@@ -190,6 +206,11 @@ export default function SeriesPage() {
     } finally {
       setGeneratingSpritesFor(null);
     }
+  }
+
+  async function regenerateSprite(characterId, expression) {
+    const { data } = await axios.post(`${API}/api/youtube/characters/${characterId}/regenerate-sprite`, { expression });
+    setCharacters(prev => prev.map(c => c._id === characterId ? data : c));
   }
 
   async function deleteCharacter(characterId) {
@@ -364,6 +385,7 @@ export default function SeriesPage() {
                   generating={generatingSpritesFor === c._id}
                   onGenerateSprites={generateSprites}
                   onDelete={deleteCharacter}
+                  onRegenerateSprite={regenerateSprite}
                 />
               ))}
             </div>

@@ -34,6 +34,7 @@ const TRANSLATIONS = {
     'attrPicker.gender': 'Gender',
     'attrPicker.age': 'Age',
     'attrPicker.build': 'Body build',
+    'attrPicker.skinColor': 'Skin color',
     'attrPicker.bodyColor': 'Main color (hair / fur / body)',
     'attrPicker.hairStyle': 'Hair / fur style',
     'attrPicker.eyeColor': 'Eye color',
@@ -67,6 +68,7 @@ const TRANSLATIONS = {
     'spriteGrid.none': 'No sprites generated yet.',
     'spriteGrid.generating': '🎨 Generating sprite set…',
     'spriteGrid.failed': '⚠ Sprite generation failed: {error}',
+    'spriteGrid.regenerate': 'Redo just this one',
 
     'episodes.heading': 'Episodes',
     'episodes.subtitle': 'Pitch one line — the pipeline writes the script, generates art, records narration, and renders the video.',
@@ -121,6 +123,7 @@ const TRANSLATIONS = {
     'attrPicker.gender': 'เพศ',
     'attrPicker.age': 'ช่วงวัย',
     'attrPicker.build': 'รูปร่าง',
+    'attrPicker.skinColor': 'สีผิว',
     'attrPicker.bodyColor': 'สีหลัก (ผม/ขน/ตัว)',
     'attrPicker.hairStyle': 'ทรงผม/ขน',
     'attrPicker.eyeColor': 'สีตา',
@@ -154,6 +157,7 @@ const TRANSLATIONS = {
     'spriteGrid.none': 'ยังไม่มีการสร้างภาพสไปรต์',
     'spriteGrid.generating': '🎨 กำลังสร้างชุดภาพสไปรต์…',
     'spriteGrid.failed': '⚠ สร้างภาพสไปรต์ไม่สำเร็จ: {error}',
+    'spriteGrid.regenerate': 'ทำใหม่เฉพาะรูปนี้',
 
     'episodes.heading': 'ตอน',
     'episodes.subtitle': 'พิมพ์พล็อตสั้นๆ หนึ่งบรรทัด — ระบบจะเขียนบท สร้างภาพ อัดเสียงบรรยาย และเรนเดอร์วิดีโอให้',
