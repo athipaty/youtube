@@ -17,7 +17,7 @@ const VOICE_LOCALES = [
 
 // Mirrors EXPRESSIONS in backend/utils/youtube/claudeScript.js — one sprite generated per
 // expression, sequentially, at Pollinations' rate limit (~16s apart).
-const SPRITE_STEPS = ['neutral', 'happy', 'sad', 'surprised', 'action'];
+const SPRITE_STEPS = ['neutral', 'happy', 'sad', 'surprised', 'angry'];
 
 function CharacterCard({ character, generating, onGenerateSprites, onDelete, onRegenerateSprite }) {
   const { t } = useLanguage();

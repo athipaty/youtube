@@ -63,7 +63,7 @@ const TRANSLATIONS = {
     'spriteSteps.happy': '😊 Happy pose…',
     'spriteSteps.sad': '😢 Sad pose…',
     'spriteSteps.surprised': '😲 Surprised pose…',
-    'spriteSteps.action': '🏃 Action pose…',
+    'spriteSteps.angry': '😠 Angry pose…',
 
     'spriteGrid.none': 'No sprites generated yet.',
     'spriteGrid.generating': '🎨 Generating sprite set…',
@@ -152,7 +152,7 @@ const TRANSLATIONS = {
     'spriteSteps.happy': '😊 ท่ายิ้ม…',
     'spriteSteps.sad': '😢 ท่าเศร้า…',
     'spriteSteps.surprised': '😲 ท่าประหลาดใจ…',
-    'spriteSteps.action': '🏃 ท่าแอ็กชัน…',
+    'spriteSteps.angry': '😠 ท่าโกรธ…',
 
     'spriteGrid.none': 'ยังไม่มีการสร้างภาพสไปรต์',
     'spriteGrid.generating': '🎨 กำลังสร้างชุดภาพสไปรต์…',
