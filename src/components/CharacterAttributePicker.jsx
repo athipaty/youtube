@@ -197,16 +197,19 @@ function selectClass() {
   return 'px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10 bg-white font-normal text-slate-900';
 }
 
-export default function CharacterAttributePicker({ onChange, onManualToggle }) {
+export default function CharacterAttributePicker({ onChange, onManualToggle, initialAttrs, initialManualText }) {
   const { t, lang } = useLanguage();
-  const [manual, setManual] = useState(false);
-  const [manualText, setManualText] = useState('');
-  const [attrs, setAttrs] = useState(DEFAULT_ATTRS);
+  // Editing a character with no stored attrs (created by typing, or from before attrs existed)
+  // falls back to plain-text mode pre-filled with its current description — there's no way to
+  // reverse a flattened description string back into dropdown selections.
+  const [manual, setManual] = useState(!initialAttrs && !!initialManualText);
+  const [manualText, setManualText] = useState(initialManualText || '');
+  const [attrs, setAttrs] = useState(initialAttrs || DEFAULT_ATTRS);
 
   const composed = composeDescription(attrs);
 
   useEffect(() => {
-    onChange(manual ? manualText : composed);
+    onChange({ description: manual ? manualText : composed, attrs: manual ? null : attrs });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [manual, manualText, composed]);
 

@@ -12,6 +12,7 @@ const TRANSLATIONS = {
 
     'common.loading': 'Loading…',
     'common.cancel': 'Cancel',
+    'common.save': 'Save',
 
     'series.heading': 'Series & Characters',
     'series.subtitle': 'Set up a story world once — characters keep the same look across every episode.',
@@ -50,6 +51,9 @@ const TRANSLATIONS = {
     'series.createCharacter': 'Create character',
     'series.noCharacters': 'No characters yet — add one above.',
     'series.generateSprites': '🎨 Generate sprites',
+    'series.regenerateAllSprites': '♻️ Regenerate all sprites',
+    'series.editCharacter': '✏️ Edit',
+    'series.editSpritesStaleWarning': "⚠ Existing sprites won't update automatically — use Regenerate all sprites (or redo individual ones) after saving to match.",
     'series.deleteCharacter': '🗑 Delete',
     'series.deleteCharacterTitle': 'Delete this character?',
     'series.deleteCharacterMessage': '{name} and all of its generated sprites will be permanently removed. Episodes already rendered with them are unaffected.',
@@ -101,6 +105,7 @@ const TRANSLATIONS = {
 
     'common.loading': 'กำลังโหลด…',
     'common.cancel': 'ยกเลิก',
+    'common.save': 'บันทึก',
 
     'series.heading': 'ซีรีส์และตัวละคร',
     'series.subtitle': 'ตั้งค่าโลกของเรื่องราวเพียงครั้งเดียว — ตัวละครจะมีหน้าตาเหมือนเดิมในทุกตอน',
@@ -139,6 +144,9 @@ const TRANSLATIONS = {
     'series.createCharacter': 'สร้างตัวละคร',
     'series.noCharacters': 'ยังไม่มีตัวละคร — เพิ่มด้านบนได้เลย',
     'series.generateSprites': '🎨 สร้างภาพสไปรต์',
+    'series.regenerateAllSprites': '♻️ สร้างภาพสไปรต์ทั้งหมดใหม่',
+    'series.editCharacter': '✏️ แก้ไข',
+    'series.editSpritesStaleWarning': '⚠ ภาพสไปรต์เดิมจะไม่อัปเดตอัตโนมัติ — หลังบันทึกแล้วให้กด "สร้างภาพสไปรต์ทั้งหมดใหม่" (หรือทำใหม่ทีละรูป) เพื่อให้ตรงกับข้อมูลล่าสุด',
     'series.deleteCharacter': '🗑 ลบ',
     'series.deleteCharacterTitle': 'ลบตัวละครนี้หรือไม่?',
     'series.deleteCharacterMessage': '{name} และภาพสไปรต์ทั้งหมดที่สร้างไว้จะถูกลบถาวร ตอนที่เรนเดอร์ไปแล้วจะไม่ได้รับผลกระทบ',

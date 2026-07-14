@@ -19,13 +19,36 @@ const VOICE_LOCALES = [
 // expression, sequentially, at Pollinations' rate limit (~16s apart).
 const SPRITE_STEPS = ['neutral', 'happy', 'sad', 'surprised', 'angry'];
 
-function CharacterCard({ character, generating, onGenerateSprites, onDelete, onRegenerateSprite }) {
+function CharacterCard({ character, generating, onGenerateSprites, onDelete, onRegenerateSprite, onEditCharacter }) {
   const { t } = useLanguage();
   const live = useCharacterProgress(character._id);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
   const [regeneratingExpression, setRegeneratingExpression] = useState(null);
+
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState(character.name);
+  const [editVoiceName, setEditVoiceName] = useState(character.voiceName);
+  const [editDescription, setEditDescription] = useState(character.description);
+  const [editAttrs, setEditAttrs] = useState(character.attrs || null);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editError, setEditError] = useState('');
+
+  async function handleSaveEdit(e) {
+    e.preventDefault();
+    if (!editName.trim() || !editDescription.trim() || savingEdit) return;
+    setSavingEdit(true);
+    setEditError('');
+    try {
+      await onEditCharacter(character._id, { name: editName, description: editDescription, voiceName: editVoiceName, attrs: editAttrs });
+      setEditing(false);
+    } catch (err) {
+      setEditError(err.response?.data?.error || 'Failed to save changes');
+    } finally {
+      setSavingEdit(false);
+    }
+  }
 
   async function handleConfirmDelete() {
     setDeleting(true);
@@ -68,12 +91,20 @@ function CharacterCard({ character, generating, onGenerateSprites, onDelete, onR
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-bold text-slate-900">{character.name}</p>
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          {character.status !== 'ready' && !generating && (
+          {!generating && (
             <button
               onClick={() => onGenerateSprites(character._id)}
               className="text-[11px] font-semibold px-3 py-1 rounded-full bg-reel text-white hover:bg-reel-dark transition-colors whitespace-nowrap"
             >
-              {t('series.generateSprites')}
+              {character.status === 'ready' ? t('series.regenerateAllSprites') : t('series.generateSprites')}
+            </button>
+          )}
+          {!editing && (
+            <button
+              onClick={() => setEditing(true)}
+              className="text-[11px] font-semibold px-3 py-1 rounded-full ring-1 ring-inset ring-slate-200 text-slate-500 hover:text-reel hover:ring-reel/40 transition-colors whitespace-nowrap"
+            >
+              {t('series.editCharacter')}
             </button>
           )}
           <button
@@ -84,7 +115,54 @@ function CharacterCard({ character, generating, onGenerateSprites, onDelete, onR
           </button>
         </div>
       </div>
-      <p className="text-xs text-slate-400">{character.description}</p>
+
+      {editing ? (
+        <form onSubmit={handleSaveEdit} className="flex flex-col gap-3 bg-slate-50 border border-slate-100 rounded-xl p-3 animate-slide-up">
+          <input
+            type="text" value={editName} onChange={e => setEditName(e.target.value)}
+            className="px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10"
+          />
+          <CharacterAttributePicker
+            initialAttrs={editAttrs}
+            initialManualText={editDescription}
+            onChange={({ description, attrs }) => { setEditDescription(description); setEditAttrs(attrs); }}
+          />
+          <input
+            type="text" placeholder={t('series.voiceNamePlaceholder')}
+            value={editVoiceName} onChange={e => setEditVoiceName(e.target.value)}
+            className="px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10"
+          />
+          {character.status === 'ready' && (
+            <p className="text-[11px] text-amber-600">{t('series.editSpritesStaleWarning')}</p>
+          )}
+          {editError && <p className="text-red-500 text-xs">{editError}</p>}
+          <div className="flex items-center gap-2">
+            <button
+              type="submit" disabled={savingEdit}
+              className="px-4 py-2 bg-reel text-white font-bold text-sm rounded-xl hover:bg-reel-dark active:scale-[0.98] disabled:opacity-50 transition-all"
+            >
+              {savingEdit ? t('series.creating') : t('common.save')}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEditing(false);
+                setEditName(character.name);
+                setEditVoiceName(character.voiceName);
+                setEditDescription(character.description);
+                setEditAttrs(character.attrs || null);
+                setEditError('');
+              }}
+              className="px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700 transition-colors"
+            >
+              {t('common.cancel')}
+            </button>
+          </div>
+        </form>
+      ) : (
+        <p className="text-xs text-slate-400">{character.description}</p>
+      )}
+
       {generating && (
         <StepProgressDots steps={SPRITE_STEPS} currentStep={live.expression} labels={spriteLabels} />
       )}
@@ -114,7 +192,7 @@ export default function SeriesPage() {
 
   // New character form
   const [showNewCharacter, setShowNewCharacter] = useState(false);
-  const [newCharacter, setNewCharacter] = useState({ name: '', description: '', voiceName: 'en-US-AvaNeural' });
+  const [newCharacter, setNewCharacter] = useState({ name: '', description: '', voiceName: 'en-US-AvaNeural', attrs: null });
   const [creatingCharacter, setCreatingCharacter] = useState(false);
   const [characterError, setCharacterError] = useState('');
 
@@ -199,7 +277,7 @@ export default function SeriesPage() {
       const { data } = await axios.post(`${API}/api/youtube/characters`, { seriesId: selectedSeriesId, ...newCharacter });
       setCharacters(prev => [data, ...prev]);
       setShowNewCharacter(false);
-      setNewCharacter({ name: '', description: '', voiceName: 'en-US-AvaNeural' });
+      setNewCharacter({ name: '', description: '', voiceName: 'en-US-AvaNeural', attrs: null });
     } catch (err) {
       setCharacterError(err.response?.data?.error || 'Failed to create character');
     } finally {
@@ -222,6 +300,11 @@ export default function SeriesPage() {
 
   async function regenerateSprite(characterId, expression) {
     const { data } = await axios.post(`${API}/api/youtube/characters/${characterId}/regenerate-sprite`, { expression });
+    setCharacters(prev => prev.map(c => c._id === characterId ? data : c));
+  }
+
+  async function editCharacter(characterId, updates) {
+    const { data } = await axios.patch(`${API}/api/youtube/characters/${characterId}`, updates);
     setCharacters(prev => prev.map(c => c._id === characterId ? data : c));
   }
 
@@ -366,7 +449,7 @@ export default function SeriesPage() {
                 className="px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10"
               />
               <CharacterAttributePicker
-                onChange={description => setNewCharacter(v => ({ ...v, description }))}
+                onChange={({ description, attrs }) => setNewCharacter(v => ({ ...v, description, attrs }))}
               />
               <input
                 type="text" placeholder={t('series.voiceNamePlaceholder')}
@@ -398,6 +481,7 @@ export default function SeriesPage() {
                   onGenerateSprites={generateSprites}
                   onDelete={deleteCharacter}
                   onRegenerateSprite={regenerateSprite}
+                  onEditCharacter={editCharacter}
                 />
               ))}
             </div>
