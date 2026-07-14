@@ -449,6 +449,8 @@ export default function SeriesPage() {
                 className="px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10"
               />
               <CharacterAttributePicker
+                initialAttrs={newCharacter.attrs}
+                initialManualText={newCharacter.description}
                 onChange={({ description, attrs }) => setNewCharacter(v => ({ ...v, description, attrs }))}
               />
               <input
