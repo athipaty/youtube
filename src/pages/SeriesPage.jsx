@@ -130,11 +130,22 @@ export default function SeriesPage() {
   const [deleteSeriesError, setDeleteSeriesError] = useState(null);
 
   // Live sprite-generation progress — same connection pattern as EpisodesPage.jsx.
+  // generate-sprites runs in the background server-side (see backend route comment — a full
+  // batch takes 80-150s+, too long to hold open as one HTTP request), so completion arrives here
+  // over the socket rather than as the POST's response.
   useEffect(() => {
     socketRef.current = io(API);
     const socket = socketRef.current;
     socket.on('character:progress', ({ characterId, expression }) => {
       setCharacterProgress(characterId, { expression });
+    });
+    socket.on('character:sprites:done', ({ characterId, character, error }) => {
+      if (character) {
+        setCharacters(prev => prev.map(c => c._id === characterId ? character : c));
+      } else if (error) {
+        setCharacters(prev => prev.map(c => c._id === characterId ? { ...c, status: 'error', spriteError: error } : c));
+      }
+      setGeneratingSpritesFor(prev => (prev === characterId ? null : prev));
     });
     return () => socket.disconnect();
   }, []);
@@ -199,11 +210,12 @@ export default function SeriesPage() {
   async function generateSprites(characterId) {
     setGeneratingSpritesFor(characterId);
     try {
-      const { data } = await axios.post(`${API}/api/youtube/characters/${characterId}/generate-sprites`);
-      setCharacters(prev => prev.map(c => c._id === characterId ? data : c));
+      // Just the kickoff — the backend responds as soon as generation starts (202), then runs
+      // the actual 80-150s+ batch in the background. Completion/failure arrives via the
+      // 'character:sprites:done' socket listener above, not this response.
+      await axios.post(`${API}/api/youtube/characters/${characterId}/generate-sprites`);
     } catch (err) {
       setCharacters(prev => prev.map(c => c._id === characterId ? { ...c, status: 'error', spriteError: err.response?.data?.error || err.message } : c));
-    } finally {
       setGeneratingSpritesFor(null);
     }
   }
