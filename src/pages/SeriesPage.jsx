@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 import axios from 'axios';
 import CharacterSpriteGrid from '../components/CharacterSpriteGrid';
+import CharacterAttributePicker from '../components/CharacterAttributePicker';
 import StepProgressDots from '../components/StepProgressDots';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { setCharacterProgress, useCharacterProgress } from '../utils/characterProgressStore';
@@ -331,12 +332,8 @@ export default function SeriesPage() {
                 onChange={e => setNewCharacter(v => ({ ...v, name: e.target.value }))}
                 className="px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10"
               />
-              <textarea
-                placeholder={t('series.descriptionPlaceholder')}
-                value={newCharacter.description}
-                onChange={e => setNewCharacter(v => ({ ...v, description: e.target.value }))}
-                rows={3}
-                className="px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10 resize-none"
+              <CharacterAttributePicker
+                onChange={description => setNewCharacter(v => ({ ...v, description }))}
               />
               <input
                 type="text" placeholder={t('series.voiceNamePlaceholder')}
