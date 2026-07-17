@@ -3,15 +3,16 @@ import { io } from 'socket.io-client';
 import axios from 'axios';
 import StepProgressDots from '../components/StepProgressDots';
 import EpisodePlayer from '../components/EpisodePlayer';
+import EpisodeReviewPanel from '../components/EpisodeReviewPanel';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { setEpisodeProgress, useEpisodeProgress } from '../utils/episodeProgressStore';
 import { useLanguage } from '../utils/i18n';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-const STEP_ORDER = ['script', 'sprites', 'backgrounds', 'tts', 'rendering', 'uploading'];
+const STEP_ORDER = ['script', 'sprites', 'backgrounds', 'tts', 'rendering', 'uploading', 'publishing'];
 
-function EpisodeCard({ episode, onRetry, onDelete }) {
+function EpisodeCard({ episode, onRetry, onDelete, onUpdate }) {
   const { t } = useLanguage();
   // Live status comes from the socket-fed store when available (updates without a refetch);
   // falls back to whatever was last loaded from the API for episodes the store hasn't heard
@@ -20,6 +21,7 @@ function EpisodeCard({ episode, onRetry, onDelete }) {
   const status = live.status || episode.status;
   const statusDetail = live.statusDetail || episode.statusDetail;
   const inProgress = status && !['done', 'error'].includes(status);
+  const showProgressDots = inProgress && status !== 'review';
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
@@ -67,8 +69,12 @@ function EpisodeCard({ episode, onRetry, onDelete }) {
       </div>
       <p className="text-xs text-slate-400">{episode.premise}</p>
 
-      {inProgress && (
+      {showProgressDots && (
         <StepProgressDots steps={STEP_ORDER} currentStep={status} labels={{ ...stepLabels, [status]: statusDetail || stepLabels[status] }} />
+      )}
+
+      {status === 'review' && (
+        <EpisodeReviewPanel key={episode.updatedAt} episode={episode} onUpdated={(updated) => onUpdate(updated)} />
       )}
 
       {status === 'error' && (
@@ -81,6 +87,15 @@ function EpisodeCard({ episode, onRetry, onDelete }) {
             {t('episodes.retry')}
           </button>
         </div>
+      )}
+
+      {status === 'done' && episode.youtubeUrl && (
+        <a
+          href={episode.youtubeUrl} target="_blank" rel="noreferrer"
+          className="self-start text-[11px] font-semibold px-3 py-1 rounded-full ring-1 ring-inset ring-reel/40 text-reel hover:bg-violet-50 transition-colors"
+        >
+          {t('episodes.watchOnYoutube')}
+        </a>
       )}
 
       {status === 'done' && episode.scenes?.length > 0 && (
@@ -138,9 +153,10 @@ export default function EpisodesPage() {
 
     socket.on('episode:progress', ({ episodeId, status, statusDetail }) => {
       setEpisodeProgress(episodeId, { status, statusDetail });
-      // 'done' means videoUrl (and the final script) are now set server-side — refetch that one
-      // episode to pick them up, since the socket payload itself only carries status/statusDetail.
-      if (status === 'done' || status === 'script') {
+      // 'done' means videoUrl (and the final script) are now set server-side, and 'review' means
+      // the full scene/dialogue/audio data is ready to show in EpisodeReviewPanel — refetch that
+      // one episode to pick them up, since the socket payload itself only carries status/statusDetail.
+      if (status === 'done' || status === 'script' || status === 'review') {
         axios.get(`${API}/api/youtube/episodes/${episodeId}`)
           .then(({ data }) => setEpisodes(prev => prev.map(e => e._id === episodeId ? data : e)))
           .catch(() => {});
@@ -181,6 +197,10 @@ export default function EpisodesPage() {
   async function deleteEpisode(episodeId) {
     await axios.delete(`${API}/api/youtube/episodes/${episodeId}`);
     setEpisodes(prev => prev.filter(e => e._id !== episodeId));
+  }
+
+  function updateEpisode(updated) {
+    setEpisodes(prev => prev.map(e => e._id === updated._id ? updated : e));
   }
 
   return (
@@ -230,7 +250,7 @@ export default function EpisodesPage() {
             <p className="text-sm text-slate-400">{t('episodes.noEpisodes')}</p>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-              {episodes.map(ep => <EpisodeCard key={ep._id} episode={ep} onRetry={retryEpisode} onDelete={deleteEpisode} />)}
+              {episodes.map(ep => <EpisodeCard key={ep._id} episode={ep} onRetry={retryEpisode} onDelete={deleteEpisode} onUpdate={updateEpisode} />)}
             </div>
           )}
         </>
