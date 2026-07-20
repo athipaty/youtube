@@ -17,9 +17,9 @@ const VOICE_LOCALES = [
 
 // Mirrors EXPRESSIONS in backend/utils/youtube/claudeScript.js — one sprite generated per
 // expression, sequentially, at Pollinations' rate limit (~16s apart).
-const SPRITE_STEPS = ['neutral', 'happy', 'sad', 'surprised', 'angry'];
+const SPRITE_STEPS = ['neutral', 'happy', 'sad', 'surprised', 'angry', 'curious', 'excited', 'laughing', 'confused', 'embarrassed'];
 
-function CharacterCard({ character, generating, onGenerateSprites, onDelete, onRegenerateSprite, onEditCharacter }) {
+function CharacterCard({ character, generating, onGenerateSprites, onBackfillSprites, onDelete, onRegenerateSprite, onEditCharacter }) {
   const { t } = useLanguage();
   const live = useCharacterProgress(character._id);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -97,6 +97,14 @@ function CharacterCard({ character, generating, onGenerateSprites, onDelete, onR
               className="text-[11px] font-semibold px-3 py-1 rounded-full bg-reel text-white hover:bg-reel-dark transition-colors whitespace-nowrap"
             >
               {character.status === 'ready' ? t('series.regenerateAllSprites') : t('series.generateSprites')}
+            </button>
+          )}
+          {!generating && character.status === 'ready' && character.sprites.length < SPRITE_STEPS.length && (
+            <button
+              onClick={() => onBackfillSprites(character._id)}
+              className="text-[11px] font-semibold px-3 py-1 rounded-full bg-emerald-500 text-white hover:bg-emerald-600 transition-colors whitespace-nowrap"
+            >
+              {t('series.backfillSprites', { count: SPRITE_STEPS.length - character.sprites.length })}
             </button>
           )}
           {!editing && (
@@ -298,6 +306,19 @@ export default function SeriesPage() {
     }
   }
 
+  // Same background-job-over-socket flow as generateSprites, just hitting the endpoint that
+  // only fills in expressions the character doesn't have yet (e.g. after EXPRESSIONS grows) —
+  // reuses the same 'character:sprites:done' handler above since the response shape matches.
+  async function backfillSprites(characterId) {
+    setGeneratingSpritesFor(characterId);
+    try {
+      await axios.post(`${API}/api/youtube/characters/${characterId}/backfill-sprites`);
+    } catch (err) {
+      setCharacters(prev => prev.map(c => c._id === characterId ? { ...c, status: 'error', spriteError: err.response?.data?.error || err.message } : c));
+      setGeneratingSpritesFor(null);
+    }
+  }
+
   async function regenerateSprite(characterId, expression) {
     const { data } = await axios.post(`${API}/api/youtube/characters/${characterId}/regenerate-sprite`, { expression });
     setCharacters(prev => prev.map(c => c._id === characterId ? data : c));
@@ -481,6 +502,7 @@ export default function SeriesPage() {
                   character={c}
                   generating={generatingSpritesFor === c._id}
                   onGenerateSprites={generateSprites}
+                  onBackfillSprites={backfillSprites}
                   onDelete={deleteCharacter}
                   onRegenerateSprite={regenerateSprite}
                   onEditCharacter={editCharacter}
