@@ -1,8 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useLanguage } from '../utils/i18n';
 
 const EXPRESSIONS = ['neutral', 'happy', 'sad', 'surprised', 'angry'];
+
+// Matches Pollinations' anonymous-tier rate limit (~1 request/15s, see backend/utils/youtube/pollinations.js) —
+// same cooldown reasoning as the sprite regenerate button on the Series page.
+const BACKGROUND_COOLDOWN_MS = 15000;
 
 // Only voices confirmed working against edge-tts-universal (see edgeTts.js) — a free-text
 // fallback covers anything else, matching the free-text voiceName field on the character form.
@@ -61,6 +65,18 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
   const [saving, setSaving] = useState(false);
   const [approving, setApproving] = useState(false);
   const [error, setError] = useState('');
+  const [regeneratingOrder, setRegeneratingOrder] = useState(null);
+  const [backgroundErrors, setBackgroundErrors] = useState({});
+  const [cooldownUntil, setCooldownUntil] = useState({}); // scene order -> timestamp
+  const [, forceTick] = useState(0);
+
+  // Re-renders once a second while any scene is cooling down so the countdown on its button stays
+  // live; stops itself once every cooldown lapses instead of ticking forever in the background.
+  useEffect(() => {
+    if (!Object.values(cooldownUntil).some((t) => t > Date.now())) return;
+    const interval = setInterval(() => forceTick((n) => n + 1), 1000);
+    return () => clearInterval(interval);
+  }, [cooldownUntil]);
 
   const original = episode.scenes;
   const hasEdits = JSON.stringify(scenes.map((s) => ({
@@ -86,6 +102,35 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
   }
   function updateVoice(characterId, voiceName) {
     setVoices((prev) => ({ ...prev, [characterId]: { ...prev[characterId], voiceName } }));
+  }
+  function cooldownSecondsLeft(order) {
+    return Math.max(0, Math.ceil(((cooldownUntil[order] || 0) - Date.now()) / 1000));
+  }
+  function hasPromptEdit(scene) {
+    const orig = original.find((s) => s.order === scene.order);
+    return !!orig && scene.backgroundPrompt.trim() !== orig.backgroundPrompt.trim();
+  }
+
+  // Regenerates just this scene's background art via its own endpoint, independent of save()/the
+  // rest of the form — merges the new URL straight into local `scenes` state instead of routing
+  // through onUpdated, since onUpdated replaces the `episode` prop and (via the `key={episode.
+  // updatedAt}` on this component in EpisodesPage) remounts this whole panel, which would discard
+  // any not-yet-saved edits sitting in other scenes/lines.
+  async function regenerateBackground(order) {
+    setRegeneratingOrder(order);
+    setBackgroundErrors((prev) => ({ ...prev, [order]: null }));
+    try {
+      const { data } = await axios.post(`${API}/api/youtube/episodes/${episode._id}/scenes/${order}/regenerate-background`);
+      const updated = data.scenes.find((s) => s.order === order);
+      if (updated) {
+        setScenes((prev) => prev.map((s) => (s.order === order ? { ...s, backgroundUrl: updated.backgroundUrl } : s)));
+      }
+    } catch (err) {
+      setBackgroundErrors((prev) => ({ ...prev, [order]: err.response?.data?.error || 'Failed to regenerate background' }));
+    } finally {
+      setRegeneratingOrder(null);
+      setCooldownUntil((prev) => ({ ...prev, [order]: Date.now() + BACKGROUND_COOLDOWN_MS }));
+    }
   }
 
   async function save() {
@@ -149,7 +194,27 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
         {scenes.map((scene) => (
           <div key={scene.order} className="bg-white rounded-lg p-2.5 ring-1 ring-inset ring-violet-100 flex flex-col gap-2">
             {scene.backgroundUrl && (
-              <img src={scene.backgroundUrl} alt="" className="w-full max-h-32 object-cover rounded-md" />
+              <div className="relative">
+                <img src={scene.backgroundUrl} alt="" className="w-full max-h-32 object-cover rounded-md" />
+                <button
+                  type="button"
+                  disabled={regeneratingOrder === scene.order || cooldownSecondsLeft(scene.order) > 0 || hasPromptEdit(scene)}
+                  onClick={() => regenerateBackground(scene.order)}
+                  title={
+                    hasPromptEdit(scene)
+                      ? t('episodes.reviewBackgroundSaveFirst')
+                      : cooldownSecondsLeft(scene.order) > 0
+                      ? t('spriteGrid.regenerateCooldown', { seconds: cooldownSecondsLeft(scene.order) })
+                      : t('episodes.reviewRegenerateBackground')
+                  }
+                  className="absolute top-1 right-1 min-w-6 h-6 px-1 flex items-center justify-center rounded-full bg-white/90 border border-slate-200 text-xs shadow-soft hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  {regeneratingOrder === scene.order ? '⏳' : cooldownSecondsLeft(scene.order) > 0 ? cooldownSecondsLeft(scene.order) : '🔄'}
+                </button>
+              </div>
+            )}
+            {backgroundErrors[scene.order] && (
+              <p className="text-[11px] text-red-500">{backgroundErrors[scene.order]}</p>
             )}
             <textarea
               value={scene.backgroundPrompt}

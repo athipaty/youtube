@@ -19,6 +19,11 @@ const VOICE_LOCALES = [
 // expression, sequentially, at Pollinations' rate limit (~16s apart).
 const SPRITE_STEPS = ['neutral', 'happy', 'sad', 'surprised', 'angry', 'curious', 'excited', 'laughing', 'confused', 'embarrassed'];
 
+// Matches Pollinations' anonymous-tier rate limit (~1 request/15s) noted in
+// backend/utils/youtube/pollinations.js — spamming the regenerate button faster than this just
+// trades a clean "wait 15s" for a rate-limit error from the API.
+const REGENERATE_COOLDOWN_MS = 15000;
+
 function CharacterCard({ character, generating, onGenerateSprites, onBackfillSprites, onDelete, onRegenerateSprite, onEditCharacter }) {
   const { t } = useLanguage();
   const live = useCharacterProgress(character._id);
@@ -26,6 +31,19 @@ function CharacterCard({ character, generating, onGenerateSprites, onBackfillSpr
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
   const [regeneratingExpression, setRegeneratingExpression] = useState(null);
+  const [regenerateError, setRegenerateError] = useState(null);
+  const [cooldownUntil, setCooldownUntil] = useState(0);
+  const [, forceTick] = useState(0);
+
+  const cooldownSecondsLeft = Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1000));
+
+  // Re-renders once a second while cooling down so the countdown shown on the button stays live;
+  // stops itself once the cooldown lapses instead of ticking forever in the background.
+  useEffect(() => {
+    if (cooldownSecondsLeft <= 0) return;
+    const interval = setInterval(() => forceTick((n) => n + 1), 1000);
+    return () => clearInterval(interval);
+  }, [cooldownUntil, cooldownSecondsLeft]);
 
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(character.name);
@@ -64,13 +82,18 @@ function CharacterCard({ character, generating, onGenerateSprites, onBackfillSpr
   }
 
   async function handleRegenerate(expression) {
+    if (cooldownSecondsLeft > 0) return;
     setRegeneratingExpression(expression);
+    setRegenerateError(null);
     try {
       await onRegenerateSprite(character._id, expression);
-    } catch {
-      // swallow — the sprite tile just stays as it was, nothing else to reconcile here
+    } catch (err) {
+      // the sprite tile stays as it was — surface why so a rate-limited/failed
+      // regenerate doesn't just look like the button silently did nothing
+      setRegenerateError(err.response?.data?.error || err.message || 'Failed to regenerate sprite');
     } finally {
       setRegeneratingExpression(null);
+      setCooldownUntil(Date.now() + REGENERATE_COOLDOWN_MS);
     }
   }
 
@@ -177,8 +200,12 @@ function CharacterCard({ character, generating, onGenerateSprites, onBackfillSpr
       <CharacterSpriteGrid
         character={character}
         regeneratingExpression={regeneratingExpression}
+        cooldownSecondsLeft={cooldownSecondsLeft}
         onRegenerate={!generating && (character.status === 'ready' || character.status === 'error') ? handleRegenerate : null}
       />
+      {regenerateError && (
+        <p className="text-xs text-red-500">{t('spriteGrid.regenerateFailed', { error: regenerateError })}</p>
+      )}
     </div>
   );
 }

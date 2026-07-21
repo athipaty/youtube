@@ -12,7 +12,7 @@ const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const STEP_ORDER = ['script', 'sprites', 'backgrounds', 'tts', 'rendering', 'uploading', 'publishing'];
 
-function EpisodeCard({ episode, onRetry, onDelete, onUpdate }) {
+function EpisodeCard({ episode, onRetry, onDelete, onUpdate, onUploadYoutube }) {
   const { t } = useLanguage();
   // Live status comes from the socket-fed store when available (updates without a refetch);
   // falls back to whatever was last loaded from the API for episodes the store hasn't heard
@@ -21,10 +21,25 @@ function EpisodeCard({ episode, onRetry, onDelete, onUpdate }) {
   const status = live.status || episode.status;
   const statusDetail = live.statusDetail || episode.statusDetail;
   const inProgress = status && !['done', 'error'].includes(status);
-  const showProgressDots = inProgress && status !== 'review';
+  const showProgressDots = inProgress && status !== 'review' && status !== 'rendered';
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
+
+  async function handleUploadYoutube() {
+    setUploading(true);
+    setUploadError(null);
+    try {
+      await onUploadYoutube(episode._id);
+    } catch (err) {
+      setUploadError(err.response?.data?.error || 'Failed to start YouTube upload');
+      setUploading(false);
+    }
+    // on success, leave `uploading` true — the status flips to 'uploading'/'publishing' over the
+    // socket almost immediately, at which point showProgressDots takes over the card's display
+  }
 
   async function handleConfirmDelete() {
     setDeleting(true);
@@ -86,6 +101,19 @@ function EpisodeCard({ episode, onRetry, onDelete, onUpdate }) {
           >
             {t('episodes.retry')}
           </button>
+        </div>
+      )}
+
+      {status === 'rendered' && (
+        <div className="flex flex-col gap-1.5">
+          <button
+            onClick={handleUploadYoutube}
+            disabled={uploading}
+            className="self-start px-4 py-2 bg-gradient-to-b from-violet-400 to-reel text-white font-bold text-sm rounded-xl hover:brightness-105 active:scale-[0.98] disabled:opacity-50 transition-all shadow-soft"
+          >
+            {uploading ? t('episodes.uploadingYoutube') : t('episodes.uploadToYoutube')}
+          </button>
+          {uploadError && <p className="text-xs text-red-500">{uploadError}</p>}
         </div>
       )}
 
@@ -199,6 +227,11 @@ export default function EpisodesPage() {
     setEpisodes(prev => prev.filter(e => e._id !== episodeId));
   }
 
+  async function uploadEpisodeToYoutube(episodeId) {
+    const { data } = await axios.post(`${API}/api/youtube/episodes/${episodeId}/upload-youtube`);
+    setEpisodes(prev => prev.map(e => e._id === episodeId ? data : e));
+  }
+
   function updateEpisode(updated) {
     setEpisodes(prev => prev.map(e => e._id === updated._id ? updated : e));
   }
@@ -250,7 +283,7 @@ export default function EpisodesPage() {
             <p className="text-sm text-slate-400">{t('episodes.noEpisodes')}</p>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-              {episodes.map(ep => <EpisodeCard key={ep._id} episode={ep} onRetry={retryEpisode} onDelete={deleteEpisode} onUpdate={updateEpisode} />)}
+              {episodes.map(ep => <EpisodeCard key={ep._id} episode={ep} onRetry={retryEpisode} onDelete={deleteEpisode} onUpdate={updateEpisode} onUploadYoutube={uploadEpisodeToYoutube} />)}
             </div>
           )}
         </>

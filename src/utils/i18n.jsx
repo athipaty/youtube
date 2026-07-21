@@ -78,7 +78,9 @@ const TRANSLATIONS = {
     'spriteGrid.none': 'No sprites generated yet.',
     'spriteGrid.generating': '🎨 Generating sprite set…',
     'spriteGrid.failed': '⚠ Sprite generation failed: {error}',
+    'spriteGrid.regenerateFailed': '⚠ Regenerate failed: {error}',
     'spriteGrid.regenerate': 'Redo just this one',
+    'spriteGrid.regenerateCooldown': 'Wait {seconds}s before regenerating again',
 
     'episodes.heading': 'Episodes',
     'episodes.subtitle': 'Pitch one line — the pipeline writes the script, generates art, records narration, and renders the video.',
@@ -104,6 +106,8 @@ const TRANSLATIONS = {
     'episodeSteps.uploading': '☁️ Uploading…',
     'episodeSteps.publishing': '📺 Publishing to YouTube…',
     'episodes.watchOnYoutube': '📺 View on YouTube',
+    'episodes.uploadToYoutube': '📤 Upload to YouTube',
+    'episodes.uploadingYoutube': 'Uploading…',
 
     'episodes.reviewHeading': '👀 Review before rendering',
     'episodes.reviewSubtitle': 'Check the dialogue, backgrounds, and voices. Edit anything, then approve to start the (slower) render.',
@@ -115,6 +119,8 @@ const TRANSLATIONS = {
     'episodes.reviewApproving': 'Starting render…',
     'episodes.reviewUnsavedHint': 'Save your changes first.',
     'episodes.reviewCustomVoice': 'Custom voice name…',
+    'episodes.reviewRegenerateBackground': 'Redo this background',
+    'episodes.reviewBackgroundSaveFirst': 'Save your prompt edit first',
   },
   th: {
     'nav.series': 'ซีรีส์',
@@ -190,7 +196,9 @@ const TRANSLATIONS = {
     'spriteGrid.none': 'ยังไม่มีการสร้างภาพสไปรต์',
     'spriteGrid.generating': '🎨 กำลังสร้างชุดภาพสไปรต์…',
     'spriteGrid.failed': '⚠ สร้างภาพสไปรต์ไม่สำเร็จ: {error}',
+    'spriteGrid.regenerateFailed': '⚠ สร้างใหม่ไม่สำเร็จ: {error}',
     'spriteGrid.regenerate': 'ทำใหม่เฉพาะรูปนี้',
+    'spriteGrid.regenerateCooldown': 'รออีก {seconds} วินาทีก่อนทำใหม่',
 
     'episodes.heading': 'ตอน',
     'episodes.subtitle': 'พิมพ์พล็อตสั้นๆ หนึ่งบรรทัด — ระบบจะเขียนบท สร้างภาพ อัดเสียงบรรยาย และเรนเดอร์วิดีโอให้',
@@ -216,6 +224,8 @@ const TRANSLATIONS = {
     'episodeSteps.uploading': '☁️ กำลังอัปโหลด…',
     'episodeSteps.publishing': '📺 กำลังเผยแพร่ไปยัง YouTube…',
     'episodes.watchOnYoutube': '📺 ดูบน YouTube',
+    'episodes.uploadToYoutube': '📤 อัปโหลดขึ้น YouTube',
+    'episodes.uploadingYoutube': 'กำลังอัปโหลด…',
 
     'episodes.reviewHeading': '👀 ตรวจสอบก่อนเรนเดอร์',
     'episodes.reviewSubtitle': 'ตรวจสอบบทพูด ภาพฉากหลัง และเสียงพากย์ แก้ไขได้ตามต้องการ แล้วกดอนุมัติเพื่อเริ่มเรนเดอร์ (ซึ่งใช้เวลานานกว่า)',
@@ -227,6 +237,8 @@ const TRANSLATIONS = {
     'episodes.reviewApproving': 'กำลังเริ่มเรนเดอร์…',
     'episodes.reviewUnsavedHint': 'กรุณาบันทึกการแก้ไขก่อน',
     'episodes.reviewCustomVoice': 'ชื่อเสียงกำหนดเอง…',
+    'episodes.reviewRegenerateBackground': 'ทำภาพฉากหลังนี้ใหม่',
+    'episodes.reviewBackgroundSaveFirst': 'กรุณาบันทึกข้อความที่แก้ไขก่อน',
   },
 };
 
