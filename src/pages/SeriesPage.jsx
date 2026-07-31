@@ -28,6 +28,13 @@ const REGENERATE_COOLDOWN_MS = 15000;
 function CharacterCard({ character, generating, onGenerateSprites, onBackfillSprites, onDelete, onRegenerateSprite, onEditCharacter }) {
   const { t } = useLanguage();
   const live = useCharacterProgress(character._id);
+  // `generating` is local "did my own click start this" state — true only in the brief window
+  // before the server's status catches up, and never true at all if generation was kicked off some
+  // other way (another tab, a page reload mid-generation, or directly via the API). character.status
+  // is the real, server-driven answer, so combining both means the progress view — and the guard
+  // against a double-click starting a second concurrent generation for this character — works
+  // regardless of what triggered it, not just this one browser tab's own click.
+  const inProgress = generating || character.status === 'generating_sprites';
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
@@ -115,7 +122,7 @@ function CharacterCard({ character, generating, onGenerateSprites, onBackfillSpr
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-bold text-slate-900">{character.name}</p>
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          {!generating && (
+          {!inProgress && (
             <button
               onClick={() => onGenerateSprites(character._id)}
               className="text-[11px] font-semibold px-3 py-1 rounded-full bg-reel text-white hover:bg-reel-dark transition-colors whitespace-nowrap"
@@ -123,7 +130,7 @@ function CharacterCard({ character, generating, onGenerateSprites, onBackfillSpr
               {character.status === 'ready' ? t('series.regenerateAllSprites') : t('series.generateSprites')}
             </button>
           )}
-          {!generating && character.status === 'ready' && character.sprites.length < SPRITE_STEPS.length && (
+          {!inProgress && character.status === 'ready' && character.sprites.length < SPRITE_STEPS.length && (
             <button
               onClick={() => onBackfillSprites(character._id)}
               className="text-[11px] font-semibold px-3 py-1 rounded-full bg-emerald-500 text-white hover:bg-emerald-600 transition-colors whitespace-nowrap"
@@ -195,14 +202,14 @@ function CharacterCard({ character, generating, onGenerateSprites, onBackfillSpr
         <p className="text-xs text-slate-400">{character.description}</p>
       )}
 
-      {generating && (
+      {inProgress && (
         <StepProgressDots steps={SPRITE_STEPS} currentStep={live.expression} labels={spriteLabels} />
       )}
       <CharacterSpriteGrid
         character={character}
         regeneratingExpression={regeneratingExpression}
         cooldownSecondsLeft={cooldownSecondsLeft}
-        onRegenerate={!generating && (character.status === 'ready' || character.status === 'error') ? handleRegenerate : null}
+        onRegenerate={!inProgress && (character.status === 'ready' || character.status === 'error') ? handleRegenerate : null}
       />
       {regenerateError && (
         <p className="text-xs text-red-500">{t('spriteGrid.regenerateFailed', { error: regenerateError })}</p>

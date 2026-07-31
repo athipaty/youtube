@@ -98,7 +98,6 @@ const TRANSLATIONS = {
     'spriteSteps.embarrassed': '😳 Embarrassed pose…',
 
     'spriteGrid.none': 'No sprites generated yet.',
-    'spriteGrid.generating': '🎨 Generating sprite set…',
     'spriteGrid.failed': '⚠ Sprite generation failed: {error}',
     'spriteGrid.regenerateFailed': '⚠ Regenerate failed: {error}',
     'spriteGrid.regenerate': 'Redo just this one',
@@ -238,7 +237,6 @@ const TRANSLATIONS = {
     'spriteSteps.embarrassed': '😳 ท่าเขินอาย…',
 
     'spriteGrid.none': 'ยังไม่มีการสร้างภาพสไปรต์',
-    'spriteGrid.generating': '🎨 กำลังสร้างชุดภาพสไปรต์…',
     'spriteGrid.failed': '⚠ สร้างภาพสไปรต์ไม่สำเร็จ: {error}',
     'spriteGrid.regenerateFailed': '⚠ สร้างใหม่ไม่สำเร็จ: {error}',
     'spriteGrid.regenerate': 'ทำใหม่เฉพาะรูปนี้',

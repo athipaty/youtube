@@ -8,7 +8,9 @@ export default function CharacterSpriteGrid({ character, regeneratingExpression,
     return <p className="text-xs text-slate-400">{t('spriteGrid.none')}</p>;
   }
   if (character.status === 'generating_sprites') {
-    return <p className="text-xs text-violet-600 font-semibold">{t('spriteGrid.generating')}</p>;
+    // SeriesPage's CharacterCard already renders StepProgressDots (per-expression progress) for
+    // this status — this used to duplicate it with a generic "generating..." line underneath.
+    return null;
   }
   if (character.status === 'error' && !character.sprites?.length) {
     return <p className="text-xs text-red-500">{t('spriteGrid.failed', { error: character.spriteError })}</p>;
