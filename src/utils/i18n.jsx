@@ -67,6 +67,8 @@ const TRANSLATIONS = {
 
     'outline.heading': 'Plan a story',
     'outline.ideaPlaceholder': "Your idea — e.g. 'a shy little rabbit who's afraid of the dark learns courage with help from a firefly friend'",
+    'outline.suggestIdea': '🎲 Suggest an idea',
+    'outline.suggestingIdea': 'Thinking of an idea…',
     'outline.targetMinutesLabel': 'Minutes per episode',
     'outline.draftButton': '✨ Draft the story',
     'outline.drafting': 'Writing the story…',
@@ -205,6 +207,8 @@ const TRANSLATIONS = {
 
     'outline.heading': 'วางแผนนิทาน',
     'outline.ideaPlaceholder': "ไอเดียของคุณ — เช่น 'กระต่ายตัวน้อยขี้กลัวความมืด เรียนรู้ความกล้าหาญด้วยความช่วยเหลือจากเพื่อนหิ่งห้อย'",
+    'outline.suggestIdea': '🎲 สุ่มไอเดีย',
+    'outline.suggestingIdea': 'กำลังคิดไอเดีย…',
     'outline.targetMinutesLabel': 'นาทีต่อหนึ่งตอน',
     'outline.draftButton': '✨ ร่างเรื่องราว',
     'outline.drafting': 'กำลังเขียนเรื่องราว…',

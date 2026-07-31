@@ -25,6 +25,25 @@ export default function StoryOutlineWizard({ onCreated, onCancel }) {
   const [committing, setCommitting] = useState(false);
   const [commitError, setCommitError] = useState('');
 
+  const [suggestingIdea, setSuggestingIdea] = useState(false);
+  const [suggestError, setSuggestError] = useState('');
+
+  // Fills the idea box with a fresh AI-suggested premise — click again for a different one, no
+  // commitment either way since this only touches the idea textarea, not anything persisted.
+  async function handleSuggestIdea() {
+    if (suggestingIdea) return;
+    setSuggestingIdea(true);
+    setSuggestError('');
+    try {
+      const { data } = await axios.post(`${API}/api/youtube/outline/idea`, { voiceLocale });
+      if (data.idea) setIdea(data.idea);
+    } catch (err) {
+      setSuggestError(err.response?.data?.error || 'Failed to suggest an idea');
+    } finally {
+      setSuggestingIdea(false);
+    }
+  }
+
   async function handleDraft(e) {
     e.preventDefault();
     if (!idea.trim() || drafting) return;
@@ -94,6 +113,13 @@ export default function StoryOutlineWizard({ onCreated, onCancel }) {
           rows={3}
           className={`${inputClass} resize-none`}
         />
+        <button
+          type="button" onClick={handleSuggestIdea} disabled={suggestingIdea}
+          className="self-start text-xs font-semibold px-3 py-1.5 rounded-full bg-violet-50 text-reel hover:bg-violet-100 disabled:opacity-50 transition-colors"
+        >
+          {suggestingIdea ? t('outline.suggestingIdea') : t('outline.suggestIdea')}
+        </button>
+        {suggestError && <p className="text-red-500 text-xs">{suggestError}</p>}
         <div className="flex gap-2 flex-wrap items-center">
           <select
             value={voiceLocale}
