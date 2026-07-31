@@ -5,6 +5,7 @@ import CharacterSpriteGrid from '../components/CharacterSpriteGrid';
 import CharacterAttributePicker from '../components/CharacterAttributePicker';
 import StepProgressDots from '../components/StepProgressDots';
 import ConfirmDialog from '../components/ConfirmDialog';
+import StoryOutlineWizard from '../components/StoryOutlineWizard';
 import { setCharacterProgress, useCharacterProgress } from '../utils/characterProgressStore';
 import { useLanguage } from '../utils/i18n';
 
@@ -219,6 +220,10 @@ export default function SeriesPage() {
   const [characters, setCharacters] = useState([]);
   const [loadingCharacters, setLoadingCharacters] = useState(false);
 
+  // AI story-outline wizard (story first -> episode breakdown -> matching cast, all before
+  // anything is persisted) — the alternative entry point to the blank "New series" form below.
+  const [showOutlineWizard, setShowOutlineWizard] = useState(false);
+
   // New series form
   const [showNewSeries, setShowNewSeries] = useState(false);
   const [newSeries, setNewSeries] = useState({ title: '', premise: '', genre: '', tone: '', artStyle: '', voiceLocale: 'en-US' });
@@ -379,6 +384,12 @@ export default function SeriesPage() {
     }
   }
 
+  function handleOutlineCreated(series) {
+    setSeriesList(prev => [series, ...prev]);
+    setSelectedSeriesId(series._id);
+    setShowOutlineWizard(false);
+  }
+
   const selectedSeries = seriesList.find(s => s._id === selectedSeriesId);
 
   return (
@@ -404,12 +415,22 @@ export default function SeriesPage() {
           ))
         )}
         <button
-          onClick={() => setShowNewSeries(v => !v)}
+          onClick={() => { setShowOutlineWizard(v => !v); setShowNewSeries(false); }}
+          className="px-3 py-1.5 rounded-full text-sm font-semibold bg-gradient-to-b from-violet-400 to-reel text-white shadow-soft hover:brightness-105 transition-all"
+        >
+          {t('series.startFromIdea')}
+        </button>
+        <button
+          onClick={() => { setShowNewSeries(v => !v); setShowOutlineWizard(false); }}
           className="px-3 py-1.5 rounded-full text-sm font-semibold bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors"
         >
           {t('series.newSeries')}
         </button>
       </div>
+
+      {showOutlineWizard && (
+        <StoryOutlineWizard onCreated={handleOutlineCreated} onCancel={() => setShowOutlineWizard(false)} />
+      )}
 
       {showNewSeries && (
         <form onSubmit={createSeries} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-card mb-6 flex flex-col gap-3 max-w-xl animate-slide-up">
