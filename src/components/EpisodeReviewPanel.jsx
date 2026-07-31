@@ -195,7 +195,7 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
           <div key={scene.order} className="bg-white rounded-lg p-2.5 ring-1 ring-inset ring-violet-100 flex flex-col gap-2">
             {scene.backgroundUrl && (
               <div className="relative">
-                <img src={scene.backgroundUrl} alt="" className="w-full max-h-32 object-cover rounded-md" />
+                <img src={scene.backgroundUrl} alt="" className="w-full rounded-md" />
                 <button
                   type="button"
                   disabled={regeneratingOrder === scene.order || cooldownSecondsLeft(scene.order) > 0 || hasPromptEdit(scene)}
