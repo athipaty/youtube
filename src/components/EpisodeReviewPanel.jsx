@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useLanguage } from '../utils/i18n';
 import { ALL_VOICES, labelForVoice } from '../utils/voices';
+import { setEpisodeProgress } from '../utils/episodeProgressStore';
 
 const EXPRESSIONS = ['neutral', 'happy', 'sad', 'surprised', 'angry'];
 
@@ -163,6 +164,17 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
         })),
         voiceChanges,
       });
+      // A voice/background/text edit re-enters the pipeline server-side (fire-and-forget — see
+      // the backend route's comment) to regenerate just what changed, landing back at "review"
+      // once done. That regeneration is what actually produces the new audio a changed voice
+      // needs — until it finishes, any dialogue line whose audioUrl got cleared still shows
+      // silent/broken, not the old clip, so there's no "still hear the old voice" case once this
+      // fires. Seed the shared progress store immediately (rather than waiting for the first
+      // socket update, which can lag a beat behind this response) so the episode card shows
+      // "working" instead of a misleading idle "click to start" button for that gap.
+      if (data.status !== 'review') {
+        setEpisodeProgress(data._id, { status: data.status, statusDetail: t('episodes.advancing') });
+      }
       onUpdated(data);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to save changes');

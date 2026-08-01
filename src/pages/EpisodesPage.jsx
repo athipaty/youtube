@@ -41,7 +41,12 @@ function EpisodeCard({ episode, onRetry, onDelete, onUpdate, onUploadYoutube, on
   // clears itself and the card naturally shows whatever that new status calls for.
   const [advancingFromStatus, setAdvancingFromStatus] = useState(null);
   const [advanceError, setAdvanceError] = useState(null);
-  const isAdvancing = advancingFromStatus === status;
+  // Two ways to know a manual step is actually running: this card's own button was just clicked
+  // (advancingFromStatus), or the review panel's "Save changes" kicked off a regeneration itself
+  // (e.g. after a voice change) without this card doing anything — that shows up as a non-empty
+  // statusDetail, which is only ever set while a step is genuinely mid-run (idle manual-step
+  // statuses always carry an empty one, cleared at the end of the previous step).
+  const isAdvancing = advancingFromStatus === status || (isManualStep && !!statusDetail);
   useEffect(() => {
     if (advancingFromStatus && status !== advancingFromStatus) setAdvancingFromStatus(null);
   }, [status, advancingFromStatus]);
