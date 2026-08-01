@@ -12,7 +12,7 @@ const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const STEP_ORDER = ['script', 'sprites', 'backgrounds', 'tts', 'rendering', 'uploading', 'publishing'];
 
-function EpisodeCard({ episode, onRetry, onDelete, onUpdate, onUploadYoutube }) {
+function EpisodeCard({ episode, onRetry, onDelete, onUpdate, onUploadYoutube, onRerender }) {
   const { t } = useLanguage();
   // Live status comes from the socket-fed store when available (updates without a refetch);
   // falls back to whatever was last loaded from the API for episodes the store hasn't heard
@@ -27,6 +27,8 @@ function EpisodeCard({ episode, onRetry, onDelete, onUpdate, onUploadYoutube }) 
   const [deleteError, setDeleteError] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
+  const [rerendering, setRerendering] = useState(false);
+  const [rerenderError, setRerenderError] = useState(null);
 
   async function handleUploadYoutube() {
     setUploading(true);
@@ -39,6 +41,19 @@ function EpisodeCard({ episode, onRetry, onDelete, onUpdate, onUploadYoutube }) 
     }
     // on success, leave `uploading` true — the status flips to 'uploading'/'publishing' over the
     // socket almost immediately, at which point showProgressDots takes over the card's display
+  }
+
+  async function handleRerender() {
+    setRerendering(true);
+    setRerenderError(null);
+    try {
+      await onRerender(episode._id);
+    } catch (err) {
+      setRerenderError(err.response?.data?.error || 'Failed to start re-render');
+      setRerendering(false);
+    }
+    // on success, leave `rerendering` true — the status flips to 'tts'/'rendering' over the socket
+    // almost immediately, at which point showProgressDots takes over the card's display
   }
 
   async function handleConfirmDelete() {
@@ -106,14 +121,24 @@ function EpisodeCard({ episode, onRetry, onDelete, onUpdate, onUploadYoutube }) 
 
       {status === 'rendered' && (
         <div className="flex flex-col gap-1.5">
-          <button
-            onClick={handleUploadYoutube}
-            disabled={uploading}
-            className="self-start px-4 py-2 bg-gradient-to-b from-violet-400 to-reel text-white font-bold text-sm rounded-xl hover:brightness-105 active:scale-[0.98] disabled:opacity-50 transition-all shadow-soft"
-          >
-            {uploading ? t('episodes.uploadingYoutube') : t('episodes.uploadToYoutube')}
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={handleUploadYoutube}
+              disabled={uploading || rerendering}
+              className="self-start px-4 py-2 bg-gradient-to-b from-violet-400 to-reel text-white font-bold text-sm rounded-xl hover:brightness-105 active:scale-[0.98] disabled:opacity-50 transition-all shadow-soft"
+            >
+              {uploading ? t('episodes.uploadingYoutube') : t('episodes.uploadToYoutube')}
+            </button>
+            <button
+              onClick={handleRerender}
+              disabled={uploading || rerendering}
+              className="self-start text-[11px] font-semibold px-3 py-1 rounded-full ring-1 ring-inset ring-reel/40 text-reel hover:bg-violet-50 disabled:opacity-50 transition-colors"
+            >
+              {rerendering ? t('episodes.rerendering') : t('episodes.rerender')}
+            </button>
+          </div>
           {uploadError && <p className="text-xs text-red-500">{uploadError}</p>}
+          {rerenderError && <p className="text-xs text-red-500">{rerenderError}</p>}
         </div>
       )}
 
@@ -232,6 +257,11 @@ export default function EpisodesPage() {
     setEpisodes(prev => prev.map(e => e._id === episodeId ? data : e));
   }
 
+  async function rerenderEpisode(episodeId) {
+    const { data } = await axios.post(`${API}/api/youtube/episodes/${episodeId}/rerender`);
+    setEpisodes(prev => prev.map(e => e._id === episodeId ? data : e));
+  }
+
   function updateEpisode(updated) {
     setEpisodes(prev => prev.map(e => e._id === updated._id ? updated : e));
   }
@@ -283,7 +313,7 @@ export default function EpisodesPage() {
             <p className="text-sm text-slate-400">{t('episodes.noEpisodes')}</p>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-              {episodes.map(ep => <EpisodeCard key={ep._id} episode={ep} onRetry={retryEpisode} onDelete={deleteEpisode} onUpdate={updateEpisode} onUploadYoutube={uploadEpisodeToYoutube} />)}
+              {episodes.map(ep => <EpisodeCard key={ep._id} episode={ep} onRetry={retryEpisode} onDelete={deleteEpisode} onUpdate={updateEpisode} onUploadYoutube={uploadEpisodeToYoutube} onRerender={rerenderEpisode} />)}
             </div>
           )}
         </>

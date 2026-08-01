@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useLanguage } from '../utils/i18n';
+import { ALL_VOICES, labelForVoice } from '../utils/voices';
 
 const EXPRESSIONS = ['neutral', 'happy', 'sad', 'surprised', 'angry'];
 
@@ -8,21 +9,17 @@ const EXPRESSIONS = ['neutral', 'happy', 'sad', 'surprised', 'angry'];
 // same cooldown reasoning as the sprite regenerate button on the Series page.
 const BACKGROUND_COOLDOWN_MS = 15000;
 
-// Only voices confirmed working against edge-tts-universal (see edgeTts.js) — a free-text
-// fallback covers anything else, matching the free-text voiceName field on the character form.
-const KNOWN_VOICES = [
-  { value: 'en-US-AndrewNeural', label: 'en-US-AndrewNeural (Male)' },
-  { value: 'en-US-AvaNeural', label: 'en-US-AvaNeural (Female)' },
-  { value: 'en-US-EmmaNeural', label: 'en-US-EmmaNeural (Female)' },
-  { value: 'th-TH-NiwatNeural', label: 'th-TH-NiwatNeural (Male)' },
-  { value: 'th-TH-PremwadeeNeural', label: 'th-TH-PremwadeeNeural (Female)' },
-];
-
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-function VoicePicker({ characterId, name, value, onChange }) {
+// This character's own saved voiceOptions (from the Series page) come first as quick picks, then
+// the rest of the full edge-tts catalog, then a free-text fallback for anything typed manually
+// before this UI existed.
+function VoicePicker({ characterId, name, value, voiceOptions, onChange }) {
   const { t } = useLanguage();
-  const isKnown = KNOWN_VOICES.some((v) => v.value === value);
+  const ownPicks = (voiceOptions || []).filter((v) => v !== value);
+  const restOfCatalog = ALL_VOICES.map((v) => v.value).filter((v) => v !== value && !ownPicks.includes(v));
+  const known = [value, ...ownPicks, ...restOfCatalog];
+  const isKnown = known.includes(value);
   return (
     <div className="flex items-center gap-2">
       <span className="text-xs font-semibold text-slate-600 w-20 truncate">{name}</span>
@@ -31,7 +28,15 @@ function VoicePicker({ characterId, name, value, onChange }) {
         onChange={(e) => onChange(characterId, e.target.value === '__custom' ? '' : e.target.value)}
         className="flex-1 px-2 py-1 text-xs border border-slate-200 rounded-lg outline-none focus:border-reel"
       >
-        {KNOWN_VOICES.map((v) => <option key={v.value} value={v.value}>{v.label}</option>)}
+        {value && <option value={value}>{labelForVoice(value)}</option>}
+        {ownPicks.length > 0 && (
+          <optgroup label={t('series.voiceOptionsLabel')}>
+            {ownPicks.map((v) => <option key={v} value={v}>{labelForVoice(v)}</option>)}
+          </optgroup>
+        )}
+        <optgroup label={t('episodes.reviewMoreVoices')}>
+          {restOfCatalog.map((v) => <option key={v} value={v}>{labelForVoice(v)}</option>)}
+        </optgroup>
         <option value="__custom">{t('episodes.reviewCustomVoice')}</option>
       </select>
       {!isKnown && (
@@ -57,7 +62,13 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
     const map = {};
     for (const scene of episode.scenes) {
       for (const line of scene.dialogue) {
-        if (line.character?._id) map[line.character._id] = { name: line.character.name, voiceName: line.character.voiceName };
+        if (line.character?._id) {
+          map[line.character._id] = {
+            name: line.character.name,
+            voiceName: line.character.voiceName,
+            voiceOptions: line.character.voiceOptions || [],
+          };
+        }
       }
     }
     return map;
@@ -185,7 +196,7 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
         <div className="flex flex-col gap-1.5 bg-white rounded-lg p-2.5 ring-1 ring-inset ring-violet-100">
           <p className="text-[11px] font-bold text-slate-500">{t('episodes.reviewVoicesHeading')}</p>
           {voiceEntries.map(([characterId, v]) => (
-            <VoicePicker key={characterId} characterId={characterId} name={v.name} value={v.voiceName} onChange={updateVoice} />
+            <VoicePicker key={characterId} characterId={characterId} name={v.name} value={v.voiceName} voiceOptions={v.voiceOptions} onChange={updateVoice} />
           ))}
         </div>
       )}

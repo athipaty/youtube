@@ -6,8 +6,10 @@ import CharacterAttributePicker from '../components/CharacterAttributePicker';
 import StepProgressDots from '../components/StepProgressDots';
 import ConfirmDialog from '../components/ConfirmDialog';
 import StoryOutlineWizard from '../components/StoryOutlineWizard';
+import VoiceOptionsPicker from '../components/VoiceOptionsPicker';
 import { setCharacterProgress, useCharacterProgress } from '../utils/characterProgressStore';
 import { useLanguage } from '../utils/i18n';
+import { voicesForLocale } from '../utils/voices';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -25,7 +27,7 @@ const SPRITE_STEPS = ['neutral', 'happy', 'sad', 'surprised', 'angry', 'curious'
 // trades a clean "wait 15s" for a rate-limit error from the API.
 const REGENERATE_COOLDOWN_MS = 15000;
 
-function CharacterCard({ character, generating, onGenerateSprites, onBackfillSprites, onDelete, onRegenerateSprite, onEditCharacter }) {
+function CharacterCard({ character, voiceLocale, generating, onGenerateSprites, onBackfillSprites, onDelete, onRegenerateSprite, onEditCharacter }) {
   const { t } = useLanguage();
   const live = useCharacterProgress(character._id);
   // `generating` is local "did my own click start this" state — true only in the brief window
@@ -56,6 +58,7 @@ function CharacterCard({ character, generating, onGenerateSprites, onBackfillSpr
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(character.name);
   const [editVoiceName, setEditVoiceName] = useState(character.voiceName);
+  const [editVoiceOptions, setEditVoiceOptions] = useState(character.voiceOptions || []);
   const [editDescription, setEditDescription] = useState(character.description);
   const [editAttrs, setEditAttrs] = useState(character.attrs || null);
   const [savingEdit, setSavingEdit] = useState(false);
@@ -67,7 +70,7 @@ function CharacterCard({ character, generating, onGenerateSprites, onBackfillSpr
     setSavingEdit(true);
     setEditError('');
     try {
-      await onEditCharacter(character._id, { name: editName, description: editDescription, voiceName: editVoiceName, attrs: editAttrs });
+      await onEditCharacter(character._id, { name: editName, description: editDescription, voiceName: editVoiceName, voiceOptions: editVoiceOptions, attrs: editAttrs });
       setEditing(false);
     } catch (err) {
       setEditError(err.response?.data?.error || 'Failed to save changes');
@@ -166,11 +169,24 @@ function CharacterCard({ character, generating, onGenerateSprites, onBackfillSpr
             initialManualText={editDescription}
             onChange={({ description, attrs }) => { setEditDescription(description); setEditAttrs(attrs); }}
           />
-          <input
-            type="text" placeholder={t('series.voiceNamePlaceholder')}
-            value={editVoiceName} onChange={e => setEditVoiceName(e.target.value)}
-            className="px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10"
-          />
+          <div className="flex flex-col gap-2">
+            <select
+              value={editVoiceName}
+              onChange={e => setEditVoiceName(e.target.value)}
+              className="px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10 bg-white"
+            >
+              {voicesForLocale(voiceLocale).some(v => v.value === editVoiceName) ? null : (
+                <option value={editVoiceName}>{editVoiceName}</option>
+              )}
+              {voicesForLocale(voiceLocale).map(v => <option key={v.value} value={v.value}>{v.label} ({v.gender})</option>)}
+            </select>
+            <VoiceOptionsPicker
+              locale={voiceLocale}
+              primaryVoice={editVoiceName}
+              options={editVoiceOptions}
+              onChange={setEditVoiceOptions}
+            />
+          </div>
           {character.status === 'ready' && (
             <p className="text-[11px] text-amber-600">{t('series.editSpritesStaleWarning')}</p>
           )}
@@ -188,6 +204,7 @@ function CharacterCard({ character, generating, onGenerateSprites, onBackfillSpr
                 setEditing(false);
                 setEditName(character.name);
                 setEditVoiceName(character.voiceName);
+                setEditVoiceOptions(character.voiceOptions || []);
                 setEditDescription(character.description);
                 setEditAttrs(character.attrs || null);
                 setEditError('');
@@ -239,7 +256,7 @@ export default function SeriesPage() {
 
   // New character form
   const [showNewCharacter, setShowNewCharacter] = useState(false);
-  const [newCharacter, setNewCharacter] = useState({ name: '', description: '', voiceName: 'en-US-AvaNeural', attrs: null });
+  const [newCharacter, setNewCharacter] = useState({ name: '', description: '', voiceName: 'en-US-AvaNeural', voiceOptions: [], attrs: null });
   const [creatingCharacter, setCreatingCharacter] = useState(false);
   const [characterError, setCharacterError] = useState('');
 
@@ -324,7 +341,7 @@ export default function SeriesPage() {
       const { data } = await axios.post(`${API}/api/youtube/characters`, { seriesId: selectedSeriesId, ...newCharacter });
       setCharacters(prev => [data, ...prev]);
       setShowNewCharacter(false);
-      setNewCharacter({ name: '', description: '', voiceName: 'en-US-AvaNeural', attrs: null });
+      setNewCharacter({ name: '', description: '', voiceName: 'en-US-AvaNeural', voiceOptions: [], attrs: null });
     } catch (err) {
       setCharacterError(err.response?.data?.error || 'Failed to create character');
     } finally {
@@ -503,7 +520,16 @@ export default function SeriesPage() {
             <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider">{t('series.charactersHeading', { title: selectedSeries.title })}</h2>
             <div className="flex items-center gap-1.5">
               <button
-                onClick={() => setShowNewCharacter(v => !v)}
+                onClick={() => {
+                  // Default to a voice that actually exists for this series' locale — the
+                  // hardcoded en-US fallback set on mount would otherwise sit outside the
+                  // catalog dropdown for a th-TH series.
+                  if (!showNewCharacter) {
+                    const firstVoice = voicesForLocale(selectedSeries.voiceLocale)[0]?.value;
+                    setNewCharacter(v => ({ ...v, voiceName: firstVoice || v.voiceName, voiceOptions: [] }));
+                  }
+                  setShowNewCharacter(v => !v);
+                }}
                 className="px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors"
               >
                 {t('series.newCharacter')}
@@ -529,11 +555,18 @@ export default function SeriesPage() {
                 initialManualText={newCharacter.description}
                 onChange={({ description, attrs }) => setNewCharacter(v => ({ ...v, description, attrs }))}
               />
-              <input
-                type="text" placeholder={t('series.voiceNamePlaceholder')}
+              <select
                 value={newCharacter.voiceName}
                 onChange={e => setNewCharacter(v => ({ ...v, voiceName: e.target.value }))}
-                className="px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10"
+                className="px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10 bg-white"
+              >
+                {voicesForLocale(selectedSeries.voiceLocale).map(v => <option key={v.value} value={v.value}>{v.label} ({v.gender})</option>)}
+              </select>
+              <VoiceOptionsPicker
+                locale={selectedSeries.voiceLocale}
+                primaryVoice={newCharacter.voiceName}
+                options={newCharacter.voiceOptions}
+                onChange={(voiceOptions) => setNewCharacter(v => ({ ...v, voiceOptions }))}
               />
               {characterError && <p className="text-red-500 text-xs">{characterError}</p>}
               <button
@@ -555,6 +588,7 @@ export default function SeriesPage() {
                 <CharacterCard
                   key={c._id}
                   character={c}
+                  voiceLocale={selectedSeries.voiceLocale}
                   generating={generatingSpritesFor === c._id}
                   onGenerateSprites={generateSprites}
                   onBackfillSprites={backfillSprites}
