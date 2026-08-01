@@ -73,7 +73,7 @@ function EpisodeCard({ episode, onRetry, onDelete, onUpdate, onUploadYoutube }) 
         <p className="text-sm font-bold text-slate-900">
           Ep. {episode.episodeNumber}{titleSuffix}
         </p>
-        {(!inProgress || status === 'rendered') && (
+        {(!inProgress || status === 'rendered' || status === 'review') && (
           <button
             onClick={() => setConfirmingDelete(true)}
             className="text-[11px] font-semibold px-3 py-1 rounded-full ring-1 ring-inset ring-slate-200 text-slate-400 hover:text-red-500 hover:ring-red-200 transition-colors whitespace-nowrap"

@@ -127,6 +127,10 @@ function findOpt(list, value) {
   return list.find(o => o.value === value);
 }
 
+function article(word) {
+  return /^[aeiou]/i.test(word) ? 'an' : 'a';
+}
+
 // Always composes from .en labels — see the file-level comment on why.
 export function composeDescription(a) {
   const parts = [];
@@ -137,9 +141,21 @@ export function composeDescription(a) {
     : a.species === 'fantasy' ? 'fantasy creature'
     : a.species === 'object' ? 'character'
     : 'human';
+
+  // Image models default to human under ambiguity, so state the species plainly
+  // up front rather than only implying it inside the longer descriptor phrase below.
+  parts.push(a.species === 'human'
+    ? 'a human character'
+    : `NOT a human, ${article(speciesWord)} ${speciesWord}`);
+
+  // Default every character to a cartoon look — without this, models tend toward
+  // photorealism, which clashes with the rest of the series' art.
+  parts.push('cartoon style illustration, not photorealistic');
+
   const genderWord = a.gender !== 'unspecified' ? findOpt(GENDERS, a.gender)?.en.toLowerCase() : '';
   const ageWord = findOpt(AGES, a.age)?.en.toLowerCase() || '';
-  parts.push([ageWord, genderWord, speciesWord].filter(Boolean).join(' '));
+  const ageGenderPhrase = [ageWord, genderWord].filter(Boolean).join(' ');
+  if (ageGenderPhrase) parts.push(ageGenderPhrase);
 
   const buildLabel = findOpt(BUILDS, a.build)?.en.toLowerCase();
   if (buildLabel) parts.push(`${buildLabel} build`);
