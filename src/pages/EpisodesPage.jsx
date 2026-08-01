@@ -12,7 +12,11 @@ const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const STEP_ORDER = ['script', 'sprites', 'backgrounds', 'tts', 'rendering', 'uploading', 'publishing'];
 
-function EpisodeCard({ episode, onRetry, onDelete, onUpdate, onUploadYoutube, onRerender }) {
+// These four are manual-click-only now (see backend's POST /episodes/:id/advance) — episode
+// creation no longer auto-starts the pipeline, so each one sits idle until its button is clicked.
+const MANUAL_STEP_STATUSES = ['pending', 'script', 'sprites', 'backgrounds'];
+
+function EpisodeCard({ episode, onRetry, onDelete, onUpdate, onUploadYoutube, onRerender, onAdvance }) {
   const { t } = useLanguage();
   // Live status comes from the socket-fed store when available (updates without a refetch);
   // falls back to whatever was last loaded from the API for episodes the store hasn't heard
@@ -21,7 +25,8 @@ function EpisodeCard({ episode, onRetry, onDelete, onUpdate, onUploadYoutube, on
   const status = live.status || episode.status;
   const statusDetail = live.statusDetail || episode.statusDetail;
   const inProgress = status && !['done', 'error'].includes(status);
-  const showProgressDots = inProgress && status !== 'review' && status !== 'rendered';
+  const isManualStep = MANUAL_STEP_STATUSES.includes(status);
+  const showProgressDots = inProgress && status !== 'review' && status !== 'rendered' && !isManualStep;
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
@@ -29,6 +34,37 @@ function EpisodeCard({ episode, onRetry, onDelete, onUpdate, onUploadYoutube, on
   const [uploadError, setUploadError] = useState(null);
   const [rerendering, setRerendering] = useState(false);
   const [rerenderError, setRerenderError] = useState(null);
+  // A manual step's status doesn't change until the whole step finishes (statusDetail updates
+  // along the way, but status itself stays put) — so "is this step currently running" has to be
+  // tracked locally, keyed to the status it was clicked from, rather than inferred from status
+  // changing. Once status moves on to anything else (next stage, 'review', or 'error'), this
+  // clears itself and the card naturally shows whatever that new status calls for.
+  const [advancingFromStatus, setAdvancingFromStatus] = useState(null);
+  const [advanceError, setAdvanceError] = useState(null);
+  const isAdvancing = advancingFromStatus === status;
+  useEffect(() => {
+    if (advancingFromStatus && status !== advancingFromStatus) setAdvancingFromStatus(null);
+  }, [status, advancingFromStatus]);
+
+  async function handleAdvance() {
+    setAdvancingFromStatus(status);
+    setAdvanceError(null);
+    try {
+      await onAdvance(episode._id);
+    } catch (err) {
+      setAdvanceError(err.response?.data?.error || 'Failed to start');
+      setAdvancingFromStatus(null);
+    }
+  }
+
+  // Unique characters appearing anywhere in this episode, so a glance at the card shows who's in
+  // it without opening the review panel — dedupes across scenes since the same character usually
+  // recurs in several.
+  const episodeCharacters = Array.from(
+    new Map(
+      (episode.scenes || []).flatMap((s) => s.charactersOnScreen || []).filter((c) => c && c._id).map((c) => [c._id, c])
+    ).values()
+  );
 
   async function handleUploadYoutube() {
     setUploading(true);
@@ -88,7 +124,11 @@ function EpisodeCard({ episode, onRetry, onDelete, onUpdate, onUploadYoutube, on
         <p className="text-sm font-bold text-slate-900">
           Ep. {episode.episodeNumber}{titleSuffix}
         </p>
-        {(!inProgress || status === 'rendered' || status === 'review') && (
+        {/* Deletable any time nothing is actually running — a manual step just sitting idle,
+            waiting for its button, is as safe to delete as 'done' or 'error'. Only genuinely
+            active work (an in-flight manual step, or the backend's own auto-chained
+            render/upload/publish tail) hides it. */}
+        {!isAdvancing && !['tts', 'rendering', 'uploading', 'publishing'].includes(status) && (
           <button
             onClick={() => setConfirmingDelete(true)}
             className="text-[11px] font-semibold px-3 py-1 rounded-full ring-1 ring-inset ring-slate-200 text-slate-400 hover:text-red-500 hover:ring-red-200 transition-colors whitespace-nowrap"
@@ -99,8 +139,42 @@ function EpisodeCard({ episode, onRetry, onDelete, onUpdate, onUploadYoutube, on
       </div>
       <p className="text-xs text-slate-400">{episode.premise}</p>
 
+      {episodeCharacters.length > 0 && (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {episodeCharacters.map((c) => {
+            const face = c.sprites?.find((s) => s.expression === 'neutral') || c.sprites?.[0];
+            return (
+              <span key={c._id} title={c.name} className="inline-flex items-center gap-1 pr-2 bg-slate-50 rounded-full ring-1 ring-inset ring-slate-100">
+                {face ? (
+                  <img src={face.imageUrl} alt={c.name} className="w-5 h-5 rounded-full object-cover" />
+                ) : (
+                  <span className="w-5 h-5 rounded-full bg-slate-200" />
+                )}
+                <span className="text-[10px] font-semibold text-slate-500 truncate max-w-[70px]">{c.name}</span>
+              </span>
+            );
+          })}
+        </div>
+      )}
+
       {showProgressDots && (
         <StepProgressDots steps={STEP_ORDER} currentStep={status} labels={{ ...stepLabels, [status]: statusDetail || stepLabels[status] }} />
+      )}
+
+      {isManualStep && (
+        <div className="flex flex-col gap-1.5">
+          {isAdvancing ? (
+            <p className="text-xs text-slate-400">{statusDetail || t('episodes.advancing')}</p>
+          ) : (
+            <button
+              onClick={handleAdvance}
+              className="self-start px-4 py-2 bg-gradient-to-b from-violet-400 to-reel text-white font-bold text-sm rounded-xl hover:brightness-105 active:scale-[0.98] transition-all shadow-soft"
+            >
+              {t(`episodes.advance.${status}`)}
+            </button>
+          )}
+          {advanceError && <p className="text-xs text-red-500">{advanceError}</p>}
+        </div>
       )}
 
       {status === 'review' && (
@@ -206,10 +280,13 @@ export default function EpisodesPage() {
 
     socket.on('episode:progress', ({ episodeId, status, statusDetail }) => {
       setEpisodeProgress(episodeId, { status, statusDetail });
-      // 'done' means videoUrl (and the final script) are now set server-side, and 'review' means
-      // the full scene/dialogue/audio data is ready to show in EpisodeReviewPanel — refetch that
-      // one episode to pick them up, since the socket payload itself only carries status/statusDetail.
-      if (status === 'done' || status === 'script' || status === 'review') {
+      // The socket payload only ever carries status/statusDetail, so any status whose step just
+      // filled in real data (script/title, character sprites, scene backgrounds, or the final
+      // video/audio at review) needs a refetch to actually show it — 'script' for the scenes
+      // Claude just wrote, 'sprites' so the episode card's character-avatar row picks up newly
+      // generated faces, 'backgrounds' for the scene art, 'review' for dialogue audio, 'done' for
+      // the final videoUrl.
+      if (['script', 'sprites', 'backgrounds', 'review', 'done'].includes(status)) {
         axios.get(`${API}/api/youtube/episodes/${episodeId}`)
           .then(({ data }) => setEpisodes(prev => prev.map(e => e._id === episodeId ? data : e)))
           .catch(() => {});
@@ -260,6 +337,12 @@ export default function EpisodesPage() {
   async function rerenderEpisode(episodeId) {
     const { data } = await axios.post(`${API}/api/youtube/episodes/${episodeId}/rerender`);
     setEpisodes(prev => prev.map(e => e._id === episodeId ? data : e));
+  }
+
+  // Fire-and-forget, like the other single-step triggers — the 202 ack just confirms the step
+  // started; its actual progress/completion arrives over the 'episode:progress' socket above.
+  async function advanceEpisode(episodeId) {
+    await axios.post(`${API}/api/youtube/episodes/${episodeId}/advance`);
   }
 
   function updateEpisode(updated) {
@@ -313,7 +396,7 @@ export default function EpisodesPage() {
             <p className="text-sm text-slate-400">{t('episodes.noEpisodes')}</p>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-              {episodes.map(ep => <EpisodeCard key={ep._id} episode={ep} onRetry={retryEpisode} onDelete={deleteEpisode} onUpdate={updateEpisode} onUploadYoutube={uploadEpisodeToYoutube} onRerender={rerenderEpisode} />)}
+              {episodes.map(ep => <EpisodeCard key={ep._id} episode={ep} onRetry={retryEpisode} onDelete={deleteEpisode} onUpdate={updateEpisode} onUploadYoutube={uploadEpisodeToYoutube} onRerender={rerenderEpisode} onAdvance={advanceEpisode} />)}
             </div>
           )}
         </>
