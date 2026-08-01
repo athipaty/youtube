@@ -9,7 +9,7 @@ import StoryOutlineWizard from '../components/StoryOutlineWizard';
 import VoiceOptionsPicker from '../components/VoiceOptionsPicker';
 import { setCharacterProgress, useCharacterProgress } from '../utils/characterProgressStore';
 import { useLanguage } from '../utils/i18n';
-import { voicesForLocale } from '../utils/voices';
+import { voicesForLocale, suggestVoice } from '../utils/voices';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -259,6 +259,10 @@ export default function SeriesPage() {
   const [newCharacter, setNewCharacter] = useState({ name: '', description: '', voiceName: 'en-US-AvaNeural', voiceOptions: [], attrs: null });
   const [creatingCharacter, setCreatingCharacter] = useState(false);
   const [characterError, setCharacterError] = useState('');
+  // Once the user manually touches the voice dropdown, stop auto-suggesting one every time the
+  // gender picker changes — the suggestion is only meant to fill a sensible starting point, not
+  // fight an explicit choice.
+  const [voiceManuallyPicked, setVoiceManuallyPicked] = useState(false);
 
   // Sprite generation is a real ~1-2 min operation (5 sprites, rate-limited) — tracked per
   // character id so multiple "Generate sprites" clicks across different characters don't
@@ -527,6 +531,7 @@ export default function SeriesPage() {
                   if (!showNewCharacter) {
                     const firstVoice = voicesForLocale(selectedSeries.voiceLocale)[0]?.value;
                     setNewCharacter(v => ({ ...v, voiceName: firstVoice || v.voiceName, voiceOptions: [] }));
+                    setVoiceManuallyPicked(false);
                   }
                   setShowNewCharacter(v => !v);
                 }}
@@ -553,11 +558,18 @@ export default function SeriesPage() {
               <CharacterAttributePicker
                 initialAttrs={newCharacter.attrs}
                 initialManualText={newCharacter.description}
-                onChange={({ description, attrs }) => setNewCharacter(v => ({ ...v, description, attrs }))}
+                onChange={({ description, attrs }) => setNewCharacter(v => (
+                  // Auto-suggest a voice matching the picked gender as a starting point — but only
+                  // until the user actually touches the voice dropdown themselves (see the select's
+                  // onChange below), so this never fights an explicit choice.
+                  voiceManuallyPicked
+                    ? { ...v, description, attrs }
+                    : { ...v, description, attrs, voiceName: suggestVoice(selectedSeries.voiceLocale, attrs?.gender) || v.voiceName }
+                ))}
               />
               <select
                 value={newCharacter.voiceName}
-                onChange={e => setNewCharacter(v => ({ ...v, voiceName: e.target.value }))}
+                onChange={e => { setVoiceManuallyPicked(true); setNewCharacter(v => ({ ...v, voiceName: e.target.value })); }}
                 className="px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10 bg-white"
               >
                 {voicesForLocale(selectedSeries.voiceLocale).map(v => <option key={v.value} value={v.value}>{v.label} ({v.gender})</option>)}
