@@ -10,11 +10,11 @@ import { useLanguage } from '../utils/i18n';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-const STEP_ORDER = ['script', 'sprites', 'backgrounds', 'tts', 'rendering', 'uploading', 'publishing'];
+const STEP_ORDER = ['script', 'images', 'tts', 'rendering', 'uploading', 'publishing'];
 
-// These four are manual-click-only now (see backend's POST /episodes/:id/advance) — episode
+// These three are manual-click-only now (see backend's POST /episodes/:id/advance) — episode
 // creation no longer auto-starts the pipeline, so each one sits idle until its button is clicked.
-const MANUAL_STEP_STATUSES = ['pending', 'script', 'sprites', 'backgrounds'];
+const MANUAL_STEP_STATUSES = ['pending', 'script', 'images'];
 
 function EpisodeCard({ episode, onRetry, onDelete, onUpdate, onUploadYoutube, onRerender, onAdvance }) {
   const { t } = useLanguage();
@@ -146,19 +146,11 @@ function EpisodeCard({ episode, onRetry, onDelete, onUpdate, onUploadYoutube, on
 
       {episodeCharacters.length > 0 && (
         <div className="flex items-center gap-1.5 flex-wrap">
-          {episodeCharacters.map((c) => {
-            const face = c.sprites?.find((s) => s.expression === 'neutral') || c.sprites?.[0];
-            return (
-              <span key={c._id} title={c.name} className="inline-flex items-center gap-1 pr-2 bg-slate-50 rounded-full ring-1 ring-inset ring-slate-100">
-                {face ? (
-                  <img src={face.imageUrl} alt={c.name} className="w-5 h-5 rounded-full object-cover" />
-                ) : (
-                  <span className="w-5 h-5 rounded-full bg-slate-200" />
-                )}
-                <span className="text-[10px] font-semibold text-slate-500 truncate max-w-[70px]">{c.name}</span>
-              </span>
-            );
-          })}
+          {episodeCharacters.map((c) => (
+            <span key={c._id} className="text-[10px] font-semibold text-slate-500 bg-slate-50 rounded-full px-2 py-1 ring-1 ring-inset ring-slate-100 truncate max-w-[100px]">
+              {c.name}
+            </span>
+          ))}
         </div>
       )}
 
@@ -286,12 +278,11 @@ export default function EpisodesPage() {
     socket.on('episode:progress', ({ episodeId, status, statusDetail }) => {
       setEpisodeProgress(episodeId, { status, statusDetail });
       // The socket payload only ever carries status/statusDetail, so any status whose step just
-      // filled in real data (script/title, character sprites, scene backgrounds, or the final
-      // video/audio at review) needs a refetch to actually show it — 'script' for the scenes
-      // Claude just wrote, 'sprites' so the episode card's character-avatar row picks up newly
-      // generated faces, 'backgrounds' for the scene art, 'review' for dialogue audio, 'done' for
-      // the final videoUrl.
-      if (['script', 'sprites', 'backgrounds', 'review', 'done'].includes(status)) {
+      // filled in real data (script/title, scene spread images, or the final video/audio at
+      // review) needs a refetch to actually show it — 'script' for the scenes Claude just wrote,
+      // 'images' for the left/right page art, 'review' for dialogue audio, 'done' for the final
+      // videoUrl.
+      if (['script', 'images', 'review', 'done'].includes(status)) {
         axios.get(`${API}/api/youtube/episodes/${episodeId}`)
           .then(({ data }) => setEpisodes(prev => prev.map(e => e._id === episodeId ? data : e)))
           .catch(() => {});

@@ -17,7 +17,8 @@ export default function StoryOutlineWizard({ onCreated, onCancel }) {
 
   const [idea, setIdea] = useState('');
   const [voiceLocale, setVoiceLocale] = useState('en-US');
-  const [targetEpisodeMinutes, setTargetEpisodeMinutes] = useState(2);
+  const [targetEpisodeMinutes, setTargetEpisodeMinutes] = useState(5);
+  const [episodeCount, setEpisodeCount] = useState(''); // blank = let Claude decide (auto)
   const [drafting, setDrafting] = useState(false);
   const [draftError, setDraftError] = useState('');
 
@@ -51,7 +52,8 @@ export default function StoryOutlineWizard({ onCreated, onCancel }) {
     setDraftError('');
     try {
       const { data } = await axios.post(`${API}/api/youtube/outline`, {
-        idea: idea.trim(), voiceLocale, targetEpisodeMinutes: Number(targetEpisodeMinutes) || 2,
+        idea: idea.trim(), voiceLocale, targetEpisodeMinutes: Number(targetEpisodeMinutes) || 5,
+        episodeCount: episodeCount ? Number(episodeCount) : null,
       });
       setDraft(data);
     } catch (err) {
@@ -134,6 +136,16 @@ export default function StoryOutlineWizard({ onCreated, onCancel }) {
               type="number" min={1} max={10} step={0.5}
               value={targetEpisodeMinutes}
               onChange={(e) => setTargetEpisodeMinutes(e.target.value)}
+              className={`${inputClass} w-20`}
+            />
+          </label>
+          <label className="flex items-center gap-1.5 text-xs text-slate-500">
+            {t('outline.episodeCountLabel')}
+            <input
+              type="number" min={1} max={30} step={1}
+              value={episodeCount}
+              onChange={(e) => setEpisodeCount(e.target.value)}
+              placeholder={t('outline.episodeCountAuto')}
               className={`${inputClass} w-20`}
             />
           </label>

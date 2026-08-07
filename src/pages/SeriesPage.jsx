@@ -1,13 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
-import { io } from 'socket.io-client';
+import { useEffect, useState } from 'react';
 import axios from 'axios';
-import CharacterSpriteGrid from '../components/CharacterSpriteGrid';
 import CharacterAttributePicker from '../components/CharacterAttributePicker';
-import StepProgressDots from '../components/StepProgressDots';
 import ConfirmDialog from '../components/ConfirmDialog';
 import StoryOutlineWizard from '../components/StoryOutlineWizard';
 import VoiceOptionsPicker from '../components/VoiceOptionsPicker';
-import { setCharacterProgress, useCharacterProgress } from '../utils/characterProgressStore';
 import { useLanguage } from '../utils/i18n';
 import { voicesForLocale, suggestVoice } from '../utils/voices';
 
@@ -18,42 +14,11 @@ const VOICE_LOCALES = [
   { value: 'th-TH', label: 'ไทย (Thai)' },
 ];
 
-// Mirrors EXPRESSIONS in backend/utils/youtube/claudeScript.js — one sprite generated per
-// expression, sequentially, at Pollinations' rate limit (~16s apart).
-const SPRITE_STEPS = ['neutral', 'happy', 'sad', 'surprised', 'angry', 'curious', 'excited', 'laughing', 'confused', 'embarrassed'];
-
-// Matches Pollinations' anonymous-tier rate limit (~1 request/15s) noted in
-// backend/utils/youtube/pollinations.js — spamming the regenerate button faster than this just
-// trades a clean "wait 15s" for a rate-limit error from the API.
-const REGENERATE_COOLDOWN_MS = 15000;
-
-function CharacterCard({ character, voiceLocale, generating, onGenerateSprites, onBackfillSprites, onDelete, onRegenerateSprite, onEditCharacter }) {
+function CharacterCard({ character, voiceLocale, onDelete, onEditCharacter }) {
   const { t } = useLanguage();
-  const live = useCharacterProgress(character._id);
-  // `generating` is local "did my own click start this" state — true only in the brief window
-  // before the server's status catches up, and never true at all if generation was kicked off some
-  // other way (another tab, a page reload mid-generation, or directly via the API). character.status
-  // is the real, server-driven answer, so combining both means the progress view — and the guard
-  // against a double-click starting a second concurrent generation for this character — works
-  // regardless of what triggered it, not just this one browser tab's own click.
-  const inProgress = generating || character.status === 'generating_sprites';
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
-  const [regeneratingExpression, setRegeneratingExpression] = useState(null);
-  const [regenerateError, setRegenerateError] = useState(null);
-  const [cooldownUntil, setCooldownUntil] = useState(0);
-  const [, forceTick] = useState(0);
-
-  const cooldownSecondsLeft = Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1000));
-
-  // Re-renders once a second while cooling down so the countdown shown on the button stays live;
-  // stops itself once the cooldown lapses instead of ticking forever in the background.
-  useEffect(() => {
-    if (cooldownSecondsLeft <= 0) return;
-    const interval = setInterval(() => forceTick((n) => n + 1), 1000);
-    return () => clearInterval(interval);
-  }, [cooldownUntil, cooldownSecondsLeft]);
 
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(character.name);
@@ -92,24 +57,6 @@ function CharacterCard({ character, voiceLocale, generating, onGenerateSprites, 
     }
   }
 
-  async function handleRegenerate(expression) {
-    if (cooldownSecondsLeft > 0) return;
-    setRegeneratingExpression(expression);
-    setRegenerateError(null);
-    try {
-      await onRegenerateSprite(character._id, expression);
-    } catch (err) {
-      // the sprite tile stays as it was — surface why so a rate-limited/failed
-      // regenerate doesn't just look like the button silently did nothing
-      setRegenerateError(err.response?.data?.error || err.message || 'Failed to regenerate sprite');
-    } finally {
-      setRegeneratingExpression(null);
-      setCooldownUntil(Date.now() + REGENERATE_COOLDOWN_MS);
-    }
-  }
-
-  const spriteLabels = Object.fromEntries(SPRITE_STEPS.map(s => [s, t(`spriteSteps.${s}`)]));
-
   return (
     <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-soft flex flex-col gap-2">
       <ConfirmDialog
@@ -125,22 +72,6 @@ function CharacterCard({ character, voiceLocale, generating, onGenerateSprites, 
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-bold text-slate-900">{character.name}</p>
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          {!inProgress && (
-            <button
-              onClick={() => onGenerateSprites(character._id)}
-              className="text-[11px] font-semibold px-3 py-1 rounded-full bg-reel text-white hover:bg-reel-dark transition-colors whitespace-nowrap"
-            >
-              {character.status === 'ready' ? t('series.regenerateAllSprites') : t('series.generateSprites')}
-            </button>
-          )}
-          {!inProgress && character.status === 'ready' && character.sprites.length < SPRITE_STEPS.length && (
-            <button
-              onClick={() => onBackfillSprites(character._id)}
-              className="text-[11px] font-semibold px-3 py-1 rounded-full bg-emerald-500 text-white hover:bg-emerald-600 transition-colors whitespace-nowrap"
-            >
-              {t('series.backfillSprites', { count: SPRITE_STEPS.length - character.sprites.length })}
-            </button>
-          )}
           {!editing && (
             <button
               onClick={() => setEditing(true)}
@@ -187,9 +118,6 @@ function CharacterCard({ character, voiceLocale, generating, onGenerateSprites, 
               onChange={setEditVoiceOptions}
             />
           </div>
-          {character.status === 'ready' && (
-            <p className="text-[11px] text-amber-600">{t('series.editSpritesStaleWarning')}</p>
-          )}
           {editError && <p className="text-red-500 text-xs">{editError}</p>}
           <div className="flex items-center gap-2">
             <button
@@ -217,19 +145,6 @@ function CharacterCard({ character, voiceLocale, generating, onGenerateSprites, 
         </form>
       ) : (
         <p className="text-xs text-slate-400">{character.description}</p>
-      )}
-
-      {inProgress && (
-        <StepProgressDots steps={SPRITE_STEPS} currentStep={live.expression} labels={spriteLabels} />
-      )}
-      <CharacterSpriteGrid
-        character={character}
-        regeneratingExpression={regeneratingExpression}
-        cooldownSecondsLeft={cooldownSecondsLeft}
-        onRegenerate={!inProgress && (character.status === 'ready' || character.status === 'error') ? handleRegenerate : null}
-      />
-      {regenerateError && (
-        <p className="text-xs text-red-500">{t('spriteGrid.regenerateFailed', { error: regenerateError })}</p>
       )}
     </div>
   );
@@ -264,37 +179,10 @@ export default function SeriesPage() {
   // fight an explicit choice.
   const [voiceManuallyPicked, setVoiceManuallyPicked] = useState(false);
 
-  // Sprite generation is a real ~1-2 min operation (5 sprites, rate-limited) — tracked per
-  // character id so multiple "Generate sprites" clicks across different characters don't
-  // interfere with each other.
-  const [generatingSpritesFor, setGeneratingSpritesFor] = useState(null);
-  const socketRef = useRef(null);
-
   // Deleting the selected series
   const [confirmingDeleteSeries, setConfirmingDeleteSeries] = useState(false);
   const [deletingSeries, setDeletingSeries] = useState(false);
   const [deleteSeriesError, setDeleteSeriesError] = useState(null);
-
-  // Live sprite-generation progress — same connection pattern as EpisodesPage.jsx.
-  // generate-sprites runs in the background server-side (see backend route comment — a full
-  // batch takes 80-150s+, too long to hold open as one HTTP request), so completion arrives here
-  // over the socket rather than as the POST's response.
-  useEffect(() => {
-    socketRef.current = io(API);
-    const socket = socketRef.current;
-    socket.on('character:progress', ({ characterId, expression }) => {
-      setCharacterProgress(characterId, { expression });
-    });
-    socket.on('character:sprites:done', ({ characterId, character, error }) => {
-      if (character) {
-        setCharacters(prev => prev.map(c => c._id === characterId ? character : c));
-      } else if (error) {
-        setCharacters(prev => prev.map(c => c._id === characterId ? { ...c, status: 'error', spriteError: error } : c));
-      }
-      setGeneratingSpritesFor(prev => (prev === characterId ? null : prev));
-    });
-    return () => socket.disconnect();
-  }, []);
 
   async function loadSeries() {
     try {
@@ -351,37 +239,6 @@ export default function SeriesPage() {
     } finally {
       setCreatingCharacter(false);
     }
-  }
-
-  async function generateSprites(characterId) {
-    setGeneratingSpritesFor(characterId);
-    try {
-      // Just the kickoff — the backend responds as soon as generation starts (202), then runs
-      // the actual 80-150s+ batch in the background. Completion/failure arrives via the
-      // 'character:sprites:done' socket listener above, not this response.
-      await axios.post(`${API}/api/youtube/characters/${characterId}/generate-sprites`);
-    } catch (err) {
-      setCharacters(prev => prev.map(c => c._id === characterId ? { ...c, status: 'error', spriteError: err.response?.data?.error || err.message } : c));
-      setGeneratingSpritesFor(null);
-    }
-  }
-
-  // Same background-job-over-socket flow as generateSprites, just hitting the endpoint that
-  // only fills in expressions the character doesn't have yet (e.g. after EXPRESSIONS grows) —
-  // reuses the same 'character:sprites:done' handler above since the response shape matches.
-  async function backfillSprites(characterId) {
-    setGeneratingSpritesFor(characterId);
-    try {
-      await axios.post(`${API}/api/youtube/characters/${characterId}/backfill-sprites`);
-    } catch (err) {
-      setCharacters(prev => prev.map(c => c._id === characterId ? { ...c, status: 'error', spriteError: err.response?.data?.error || err.message } : c));
-      setGeneratingSpritesFor(null);
-    }
-  }
-
-  async function regenerateSprite(characterId, expression) {
-    const { data } = await axios.post(`${API}/api/youtube/characters/${characterId}/regenerate-sprite`, { expression });
-    setCharacters(prev => prev.map(c => c._id === characterId ? data : c));
   }
 
   async function editCharacter(characterId, updates) {
@@ -601,11 +458,7 @@ export default function SeriesPage() {
                   key={c._id}
                   character={c}
                   voiceLocale={selectedSeries.voiceLocale}
-                  generating={generatingSpritesFor === c._id}
-                  onGenerateSprites={generateSprites}
-                  onBackfillSprites={backfillSprites}
                   onDelete={deleteCharacter}
-                  onRegenerateSprite={regenerateSprite}
                   onEditCharacter={editCharacter}
                 />
               ))}

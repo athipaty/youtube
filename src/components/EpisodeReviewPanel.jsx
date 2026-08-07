@@ -6,9 +6,8 @@ import { setEpisodeProgress } from '../utils/episodeProgressStore';
 
 const EXPRESSIONS = ['neutral', 'happy', 'sad', 'surprised', 'angry'];
 
-// Matches Pollinations' anonymous-tier rate limit (~1 request/15s, see backend/utils/youtube/pollinations.js) —
-// same cooldown reasoning as the sprite regenerate button on the Series page.
-const BACKGROUND_COOLDOWN_MS = 15000;
+// Matches Pollinations' anonymous-tier rate limit (~1 request/15s, see backend/utils/youtube/pollinations.js).
+const PAGE_COOLDOWN_MS = 15000;
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -51,8 +50,9 @@ function VoicePicker({ characterId, name, value, voiceOptions, onChange }) {
 }
 
 // Shown while an episode is paused at status:'review' — after TTS, before the expensive render.
-// Lets a human read the dialogue, look at the backgrounds, listen to the narration, and fix
-// anything (wrong voice for a character being the most common case) before committing to render.
+// Lets a human read the dialogue, look at each scene's left/right page spread, listen to the
+// narration, and fix anything (wrong voice for a character being the most common case) before
+// committing to render.
 export default function EpisodeReviewPanel({ episode, onUpdated }) {
   const { t } = useLanguage();
   const [scenes, setScenes] = useState(() => episode.scenes.map((s) => ({
@@ -77,9 +77,9 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
   const [saving, setSaving] = useState(false);
   const [approving, setApproving] = useState(false);
   const [error, setError] = useState('');
-  const [regeneratingOrder, setRegeneratingOrder] = useState(null);
-  const [backgroundErrors, setBackgroundErrors] = useState({});
-  const [cooldownUntil, setCooldownUntil] = useState({}); // scene order -> timestamp
+  const [regeneratingKey, setRegeneratingKey] = useState(null); // `${order}:${side}`
+  const [pageErrors, setPageErrors] = useState({}); // `${order}:${side}` -> error message
+  const [cooldownUntil, setCooldownUntil] = useState({}); // `${order}:${side}` -> timestamp
   const [, forceTick] = useState(0);
 
   // Re-renders once a second while any scene is cooling down so the countdown on its button stays
@@ -115,33 +115,36 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
   function updateVoice(characterId, voiceName) {
     setVoices((prev) => ({ ...prev, [characterId]: { ...prev[characterId], voiceName } }));
   }
-  function cooldownSecondsLeft(order) {
-    return Math.max(0, Math.ceil(((cooldownUntil[order] || 0) - Date.now()) / 1000));
+  function cooldownSecondsLeft(order, side) {
+    const key = `${order}:${side}`;
+    return Math.max(0, Math.ceil(((cooldownUntil[key] || 0) - Date.now()) / 1000));
   }
   function hasPromptEdit(scene) {
     const orig = original.find((s) => s.order === scene.order);
     return !!orig && scene.backgroundPrompt.trim() !== orig.backgroundPrompt.trim();
   }
 
-  // Regenerates just this scene's background art via its own endpoint, independent of save()/the
-  // rest of the form — merges the new URL straight into local `scenes` state instead of routing
-  // through onUpdated, since onUpdated replaces the `episode` prop and (via the `key={episode.
-  // updatedAt}` on this component in EpisodesPage) remounts this whole panel, which would discard
-  // any not-yet-saved edits sitting in other scenes/lines.
-  async function regenerateBackground(order) {
-    setRegeneratingOrder(order);
-    setBackgroundErrors((prev) => ({ ...prev, [order]: null }));
+  // Regenerates just one page (left or right) of this scene's spread via its own endpoint,
+  // independent of save()/the rest of the form — merges the new URL straight into local `scenes`
+  // state instead of routing through onUpdated, since onUpdated replaces the `episode` prop and
+  // (via the `key={episode.updatedAt}` on this component in EpisodesPage) remounts this whole
+  // panel, which would discard any not-yet-saved edits sitting in other scenes/lines.
+  async function regeneratePage(order, side) {
+    const key = `${order}:${side}`;
+    setRegeneratingKey(key);
+    setPageErrors((prev) => ({ ...prev, [key]: null }));
     try {
-      const { data } = await axios.post(`${API}/api/youtube/episodes/${episode._id}/scenes/${order}/regenerate-background`);
+      const { data } = await axios.post(`${API}/api/youtube/episodes/${episode._id}/scenes/${order}/regenerate-page`, { side });
       const updated = data.scenes.find((s) => s.order === order);
+      const field = side === 'left' ? 'leftPageUrl' : 'rightPageUrl';
       if (updated) {
-        setScenes((prev) => prev.map((s) => (s.order === order ? { ...s, backgroundUrl: updated.backgroundUrl } : s)));
+        setScenes((prev) => prev.map((s) => (s.order === order ? { ...s, [field]: updated[field] } : s)));
       }
     } catch (err) {
-      setBackgroundErrors((prev) => ({ ...prev, [order]: err.response?.data?.error || 'Failed to regenerate background' }));
+      setPageErrors((prev) => ({ ...prev, [key]: err.response?.data?.error || 'Failed to regenerate page' }));
     } finally {
-      setRegeneratingOrder(null);
-      setCooldownUntil((prev) => ({ ...prev, [order]: Date.now() + BACKGROUND_COOLDOWN_MS }));
+      setRegeneratingKey(null);
+      setCooldownUntil((prev) => ({ ...prev, [key]: Date.now() + PAGE_COOLDOWN_MS }));
     }
   }
 
@@ -216,28 +219,38 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
       <div className="flex flex-col gap-3 max-h-80 overflow-y-auto pr-1">
         {scenes.map((scene) => (
           <div key={scene.order} className="bg-white rounded-lg p-2.5 ring-1 ring-inset ring-violet-100 flex flex-col gap-2">
-            {scene.backgroundUrl && (
-              <div className="relative">
-                <img src={scene.backgroundUrl} alt="" className="w-full rounded-md" />
-                <button
-                  type="button"
-                  disabled={regeneratingOrder === scene.order || cooldownSecondsLeft(scene.order) > 0 || hasPromptEdit(scene)}
-                  onClick={() => regenerateBackground(scene.order)}
-                  title={
-                    hasPromptEdit(scene)
-                      ? t('episodes.reviewBackgroundSaveFirst')
-                      : cooldownSecondsLeft(scene.order) > 0
-                      ? t('spriteGrid.regenerateCooldown', { seconds: cooldownSecondsLeft(scene.order) })
-                      : t('episodes.reviewRegenerateBackground')
-                  }
-                  className="absolute top-1 right-1 min-w-6 h-6 px-1 flex items-center justify-center rounded-full bg-white/90 border border-slate-200 text-xs shadow-soft hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  {regeneratingOrder === scene.order ? '⏳' : cooldownSecondsLeft(scene.order) > 0 ? cooldownSecondsLeft(scene.order) : '🔄'}
-                </button>
+            {(scene.leftPageUrl || scene.rightPageUrl) && (
+              <div className="flex gap-1.5">
+                {['left', 'right'].map((side) => {
+                  const url = side === 'left' ? scene.leftPageUrl : scene.rightPageUrl;
+                  if (!url) return null;
+                  const key = `${scene.order}:${side}`;
+                  const cooldown = cooldownSecondsLeft(scene.order, side);
+                  return (
+                    <div key={side} className="relative flex-1 min-w-0">
+                      <img src={url} alt="" className="w-full rounded-md" />
+                      <button
+                        type="button"
+                        disabled={regeneratingKey === key || cooldown > 0 || hasPromptEdit(scene)}
+                        onClick={() => regeneratePage(scene.order, side)}
+                        title={
+                          hasPromptEdit(scene)
+                            ? t('episodes.reviewPageSaveFirst')
+                            : cooldown > 0
+                            ? t('episodes.reviewRegenerateCooldown', { seconds: cooldown })
+                            : t('episodes.reviewRegeneratePage')
+                        }
+                        className="absolute top-1 right-1 min-w-6 h-6 px-1 flex items-center justify-center rounded-full bg-white/90 border border-slate-200 text-xs shadow-soft hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {regeneratingKey === key ? '⏳' : cooldown > 0 ? cooldown : '🔄'}
+                      </button>
+                      {pageErrors[key] && (
+                        <p className="absolute inset-x-0 -bottom-4 text-[10px] text-red-500 truncate">{pageErrors[key]}</p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            )}
-            {backgroundErrors[scene.order] && (
-              <p className="text-[11px] text-red-500">{backgroundErrors[scene.order]}</p>
             )}
             <textarea
               value={scene.backgroundPrompt}
