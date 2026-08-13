@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import axios from 'axios';
 import StepProgressDots from '../components/StepProgressDots';
@@ -15,6 +16,12 @@ const STEP_ORDER = ['script', 'images', 'tts', 'rendering', 'uploading', 'publis
 // These three are manual-click-only now (see backend's POST /episodes/:id/advance) — episode
 // creation no longer auto-starts the pipeline, so each one sits idle until its button is clicked.
 const MANUAL_STEP_STATUSES = ['pending', 'script', 'images'];
+
+// Statuses with actual scene data worth showing/editing — mirrors the backend's own
+// EDITABLE_STATUSES for PUT /episodes/:id/scenes. "pending" has no scenes yet; "error" may have a
+// partial/broken script; "uploading"/"publishing"/"done" are past the point edits here would ever
+// reach the published video.
+const PREVIEWABLE_STATUSES = ['script', 'images', 'review', 'rendered'];
 
 function EpisodeCard({ episode, onRetry, onDelete, onUpdate, onUploadYoutube, onRerender, onAdvance }) {
   const { t } = useLanguage();
@@ -158,6 +165,13 @@ function EpisodeCard({ episode, onRetry, onDelete, onUpdate, onUploadYoutube, on
         <StepProgressDots steps={STEP_ORDER} currentStep={status} labels={{ ...stepLabels, [status]: statusDetail || stepLabels[status] }} />
       )}
 
+      {/* Shown before the step's own action button/s below — read (and revise) what's been
+          generated so far, then decide whether to advance/re-render/upload. Hidden mid-step
+          (isAdvancing) since the scene data it'd show is about to change anyway. */}
+      {PREVIEWABLE_STATUSES.includes(status) && !isAdvancing && (
+        <EpisodeReviewPanel key={episode.updatedAt} episode={episode} onUpdated={(updated) => onUpdate(updated)} />
+      )}
+
       {isManualStep && (
         <div className="flex flex-col gap-1.5">
           {isAdvancing ? (
@@ -172,10 +186,6 @@ function EpisodeCard({ episode, onRetry, onDelete, onUpdate, onUploadYoutube, on
           )}
           {advanceError && <p className="text-xs text-red-500">{advanceError}</p>}
         </div>
-      )}
-
-      {status === 'review' && (
-        <EpisodeReviewPanel key={episode.updatedAt} episode={episode} onUpdated={(updated) => onUpdate(updated)} />
       )}
 
       {status === 'error' && (
@@ -251,12 +261,17 @@ export default function EpisodesPage() {
   const [createError, setCreateError] = useState('');
   const socketRef = useRef(null);
 
+  // Both tabs stay mounted permanently (see AppShell), so this page's own series list would
+  // otherwise only ever be fetched once at initial app load — stale as soon as a series is
+  // created on the Series tab. Re-fetch every time this tab becomes active instead.
+  const location = useLocation();
   useEffect(() => {
+    if (location.pathname !== '/episodes') return;
     axios.get(`${API}/api/youtube/series`).then(({ data }) => {
       setSeriesList(data);
-      if (data.length) setSelectedSeriesId(data[0]._id);
+      setSelectedSeriesId(prev => (prev && data.some(s => s._id === prev)) ? prev : (data[0]?._id ?? null));
     }).catch(() => {});
-  }, []);
+  }, [location.pathname]);
 
   async function loadEpisodes(seriesId) {
     if (!seriesId) { setEpisodes([]); return; }

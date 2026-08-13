@@ -49,12 +49,28 @@ function VoicePicker({ characterId, name, value, voiceOptions, onChange }) {
   );
 }
 
-// Shown while an episode is paused at status:'review' — after TTS, before the expensive render.
-// Lets a human read the dialogue, look at each scene's left/right page spread, listen to the
-// narration, and fix anything (wrong voice for a character being the most common case) before
-// committing to render.
+// Shown at every checkpoint that already has scene data to look at: "script" (script only),
+// "images" (+ spread art), "review" (+ narration, the original use case — after TTS, before the
+// expensive render), and "rendered" (+ finished video, editable so a mistake spotted after
+// rendering doesn't require starting a whole new episode — approving render again is what
+// actually replaces the video). Lets a human read the dialogue, look at each scene's left/right
+// page spread (once it exists), listen to the narration (once it exists), and fix anything —
+// wrong voice for a character being the most common case — with only the "Approve & render"
+// action itself gated to "review", matching the backend's own step restrictions.
 export default function EpisodeReviewPanel({ episode, onUpdated }) {
   const { t } = useLanguage();
+  const HEADING_BY_STATUS = {
+    script: 'episodes.previewHeadingScript',
+    images: 'episodes.previewHeadingImages',
+    rendered: 'episodes.previewHeadingRendered',
+  };
+  const SUBTITLE_BY_STATUS = {
+    script: 'episodes.previewSubtitleScript',
+    images: 'episodes.previewSubtitleImages',
+    rendered: 'episodes.previewSubtitleRendered',
+  };
+  const headingKey = HEADING_BY_STATUS[episode.status] || 'episodes.reviewHeading';
+  const subtitleKey = SUBTITLE_BY_STATUS[episode.status] || 'episodes.reviewSubtitle';
   const [scenes, setScenes] = useState(() => episode.scenes.map((s) => ({
     ...s,
     dialogue: s.dialogue.map((d) => ({ ...d })),
@@ -167,15 +183,20 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
         })),
         voiceChanges,
       });
-      // A voice/background/text edit re-enters the pipeline server-side (fire-and-forget — see
-      // the backend route's comment) to regenerate just what changed, landing back at "review"
-      // once done. That regeneration is what actually produces the new audio a changed voice
-      // needs — until it finishes, any dialogue line whose audioUrl got cleared still shows
-      // silent/broken, not the old clip, so there's no "still hear the old voice" case once this
-      // fires. Seed the shared progress store immediately (rather than waiting for the first
-      // socket update, which can lag a beat behind this response) so the episode card shows
-      // "working" instead of a misleading idle "click to start" button for that gap.
-      if (data.status !== 'review') {
+      // A voice/background/text edit that actually invalidates something re-enters the pipeline
+      // server-side (fire-and-forget — see the backend route's comment) to regenerate just what
+      // changed, landing back at whatever step it started from once done. That regeneration is
+      // what actually produces the new audio a changed voice needs — until it finishes, any
+      // dialogue line whose audioUrl got cleared still shows silent/broken, not the old clip, so
+      // there's no "still hear the old voice" case once this fires. Detected by comparing against
+      // this episode's own prior status (not a hardcoded 'review') since edits can now also be
+      // saved from "script"/"images"/"rendered" — a status *change* means the backend decided a
+      // step needs to redo; unchanged means it was just cosmetic (e.g. only an expression) or an
+      // edit at "script" that nothing downstream has been generated for yet. Seed the shared
+      // progress store immediately (rather than waiting for the first socket update, which can lag
+      // a beat behind this response) so the episode card shows "working" instead of a misleading
+      // idle "click to start" button for that gap.
+      if (data.status !== episode.status) {
         setEpisodeProgress(data._id, { status: data.status, statusDetail: t('episodes.advancing') });
       }
       onUpdated(data);
@@ -203,8 +224,8 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
   return (
     <div className="flex flex-col gap-3 bg-violet-50 ring-1 ring-inset ring-violet-200 rounded-xl p-3">
       <div>
-        <p className="text-xs font-bold text-violet-900">{t('episodes.reviewHeading')}</p>
-        <p className="text-[11px] text-violet-500">{t('episodes.reviewSubtitle')}</p>
+        <p className="text-xs font-bold text-violet-900">{t(headingKey)}</p>
+        <p className="text-[11px] text-violet-500">{t(subtitleKey)}</p>
       </div>
 
       {voiceEntries.length > 0 && (
@@ -288,24 +309,30 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
 
       {error && <p className="text-red-500 text-xs">{error}</p>}
 
-      <div className="flex items-center gap-2">
-        {hasEdits ? (
-          <button
-            onClick={save} disabled={saving}
-            className="px-3 py-1.5 bg-white ring-1 ring-inset ring-reel/40 text-reel font-bold text-xs rounded-lg hover:bg-violet-50 disabled:opacity-50 transition-colors"
-          >
-            {saving ? t('episodes.reviewSaving') : t('episodes.reviewSaveChanges')}
-          </button>
-        ) : (
-          <button
-            onClick={approve} disabled={approving}
-            className="px-3 py-1.5 bg-gradient-to-b from-violet-400 to-reel text-white font-bold text-xs rounded-lg hover:brightness-105 disabled:opacity-50 transition-all shadow-soft"
-          >
-            {approving ? t('episodes.reviewApproving') : t('episodes.reviewApprove')}
-          </button>
-        )}
-        {hasEdits && <span className="text-[11px] text-violet-400">{t('episodes.reviewUnsavedHint')}</span>}
-      </div>
+      {/* "Approve & render" only ever makes sense at "review" — that's the one action the backend
+          itself still restricts to that status. At "script"/"images"/"rendered" there's nothing to
+          click here when there are no edits pending; the card's own advance/upload/re-render
+          button (rendered elsewhere) is the right next action instead. */}
+      {(hasEdits || episode.status === 'review') && (
+        <div className="flex items-center gap-2">
+          {hasEdits ? (
+            <button
+              onClick={save} disabled={saving}
+              className="px-3 py-1.5 bg-white ring-1 ring-inset ring-reel/40 text-reel font-bold text-xs rounded-lg hover:bg-violet-50 disabled:opacity-50 transition-colors"
+            >
+              {saving ? t('episodes.reviewSaving') : t('episodes.reviewSaveChanges')}
+            </button>
+          ) : (
+            <button
+              onClick={approve} disabled={approving}
+              className="px-3 py-1.5 bg-gradient-to-b from-violet-400 to-reel text-white font-bold text-xs rounded-lg hover:brightness-105 disabled:opacity-50 transition-all shadow-soft"
+            >
+              {approving ? t('episodes.reviewApproving') : t('episodes.reviewApprove')}
+            </button>
+          )}
+          {hasEdits && <span className="text-[11px] text-violet-400">{t('episodes.reviewUnsavedHint')}</span>}
+        </div>
+      )}
     </div>
   );
 }
