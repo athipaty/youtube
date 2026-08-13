@@ -131,36 +131,33 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
   function updateVoice(characterId, voiceName) {
     setVoices((prev) => ({ ...prev, [characterId]: { ...prev[characterId], voiceName } }));
   }
-  function cooldownSecondsLeft(order, side) {
-    const key = `${order}:${side}`;
-    return Math.max(0, Math.ceil(((cooldownUntil[key] || 0) - Date.now()) / 1000));
+  function cooldownSecondsLeft(order) {
+    return Math.max(0, Math.ceil(((cooldownUntil[order] || 0) - Date.now()) / 1000));
   }
   function hasPromptEdit(scene) {
     const orig = original.find((s) => s.order === scene.order);
     return !!orig && scene.backgroundPrompt.trim() !== orig.backgroundPrompt.trim();
   }
 
-  // Regenerates just one page (left or right) of this scene's spread via its own endpoint,
-  // independent of save()/the rest of the form — merges the new URL straight into local `scenes`
-  // state instead of routing through onUpdated, since onUpdated replaces the `episode` prop and
-  // (via the `key={episode.updatedAt}` on this component in EpisodesPage) remounts this whole
-  // panel, which would discard any not-yet-saved edits sitting in other scenes/lines.
-  async function regeneratePage(order, side) {
-    const key = `${order}:${side}`;
-    setRegeneratingKey(key);
-    setPageErrors((prev) => ({ ...prev, [key]: null }));
+  // Regenerates just this scene's image via its own endpoint, independent of save()/the rest of
+  // the form — merges the new URL straight into local `scenes` state instead of routing through
+  // onUpdated, since onUpdated replaces the `episode` prop and (via the `key={episode.updatedAt}`
+  // on this component in EpisodesPage) remounts this whole panel, which would discard any
+  // not-yet-saved edits sitting in other scenes/lines.
+  async function regenerateImage(order) {
+    setRegeneratingKey(order);
+    setPageErrors((prev) => ({ ...prev, [order]: null }));
     try {
-      const { data } = await axios.post(`${API}/api/youtube/episodes/${episode._id}/scenes/${order}/regenerate-page`, { side });
+      const { data } = await axios.post(`${API}/api/youtube/episodes/${episode._id}/scenes/${order}/regenerate-image`);
       const updated = data.scenes.find((s) => s.order === order);
-      const field = side === 'left' ? 'leftPageUrl' : 'rightPageUrl';
       if (updated) {
-        setScenes((prev) => prev.map((s) => (s.order === order ? { ...s, [field]: updated[field] } : s)));
+        setScenes((prev) => prev.map((s) => (s.order === order ? { ...s, imageUrl: updated.imageUrl } : s)));
       }
     } catch (err) {
-      setPageErrors((prev) => ({ ...prev, [key]: err.response?.data?.error || 'Failed to regenerate page' }));
+      setPageErrors((prev) => ({ ...prev, [order]: err.response?.data?.error || 'Failed to regenerate image' }));
     } finally {
       setRegeneratingKey(null);
-      setCooldownUntil((prev) => ({ ...prev, [key]: Date.now() + PAGE_COOLDOWN_MS }));
+      setCooldownUntil((prev) => ({ ...prev, [order]: Date.now() + PAGE_COOLDOWN_MS }));
     }
   }
 
@@ -240,39 +237,32 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
       <div className="flex flex-col gap-3 max-h-80 overflow-y-auto pr-1">
         {scenes.map((scene) => (
           <div key={scene.order} className="bg-white rounded-lg p-2.5 ring-1 ring-inset ring-violet-100 flex flex-col gap-2">
-            {(scene.leftPageUrl || scene.rightPageUrl) && (
-              <div className="flex gap-1.5">
-                {['left', 'right'].map((side) => {
-                  const url = side === 'left' ? scene.leftPageUrl : scene.rightPageUrl;
-                  if (!url) return null;
-                  const key = `${scene.order}:${side}`;
-                  const cooldown = cooldownSecondsLeft(scene.order, side);
-                  return (
-                    <div key={side} className="relative flex-1 min-w-0">
-                      <img src={url} alt="" className="w-full rounded-md" />
-                      <button
-                        type="button"
-                        disabled={regeneratingKey === key || cooldown > 0 || hasPromptEdit(scene)}
-                        onClick={() => regeneratePage(scene.order, side)}
-                        title={
-                          hasPromptEdit(scene)
-                            ? t('episodes.reviewPageSaveFirst')
-                            : cooldown > 0
-                            ? t('episodes.reviewRegenerateCooldown', { seconds: cooldown })
-                            : t('episodes.reviewRegeneratePage')
-                        }
-                        className="absolute top-1 right-1 min-w-6 h-6 px-1 flex items-center justify-center rounded-full bg-white/90 border border-slate-200 text-xs shadow-soft hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                      >
-                        {regeneratingKey === key ? '⏳' : cooldown > 0 ? cooldown : '🔄'}
-                      </button>
-                      {pageErrors[key] && (
-                        <p className="absolute inset-x-0 -bottom-4 text-[10px] text-red-500 truncate">{pageErrors[key]}</p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            {scene.imageUrl && (() => {
+              const cooldown = cooldownSecondsLeft(scene.order);
+              return (
+                <div className="relative">
+                  <img src={scene.imageUrl} alt="" className="w-full rounded-md" />
+                  <button
+                    type="button"
+                    disabled={regeneratingKey === scene.order || cooldown > 0 || hasPromptEdit(scene)}
+                    onClick={() => regenerateImage(scene.order)}
+                    title={
+                      hasPromptEdit(scene)
+                        ? t('episodes.reviewPageSaveFirst')
+                        : cooldown > 0
+                        ? t('episodes.reviewRegenerateCooldown', { seconds: cooldown })
+                        : t('episodes.reviewRegeneratePage')
+                    }
+                    className="absolute top-1 right-1 min-w-6 h-6 px-1 flex items-center justify-center rounded-full bg-white/90 border border-slate-200 text-xs shadow-soft hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {regeneratingKey === scene.order ? '⏳' : cooldown > 0 ? cooldown : '🔄'}
+                  </button>
+                  {pageErrors[scene.order] && (
+                    <p className="absolute inset-x-0 -bottom-4 text-[10px] text-red-500 truncate">{pageErrors[scene.order]}</p>
+                  )}
+                </div>
+              );
+            })()}
             <textarea
               value={scene.backgroundPrompt}
               onChange={(e) => updateScenePrompt(scene.order, e.target.value)}
