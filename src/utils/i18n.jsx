@@ -161,6 +161,10 @@ const TRANSLATIONS = {
     'episodes.reviewRegeneratePage': 'Redo this image',
     'episodes.reviewPageSaveFirst': 'Save your prompt edit first',
     'episodes.reviewRegenerateCooldown': 'Wait {seconds}s before regenerating again',
+    'episodes.reviewRegenerateScript': '🗑️ Regenerate script',
+    'episodes.regenerateScriptTitle': 'Throw out this script and start over?',
+    'episodes.regenerateScriptMessage': 'Every scene image, dialogue line, and audio clip generated from the current script will be discarded, and a brand-new script written from the same premise. This can\'t be undone.',
+    'episodes.regenerateScriptConfirm': 'Regenerate script',
   },
   th: {
     'nav.series': 'ซีรีส์',
@@ -319,6 +323,10 @@ const TRANSLATIONS = {
     'episodes.reviewRegeneratePage': 'ทำภาพนี้ใหม่',
     'episodes.reviewPageSaveFirst': 'กรุณาบันทึกข้อความที่แก้ไขก่อน',
     'episodes.reviewRegenerateCooldown': 'รออีก {seconds} วินาทีก่อนทำใหม่',
+    'episodes.reviewRegenerateScript': '🗑️ สร้างสคริปต์ใหม่',
+    'episodes.regenerateScriptTitle': 'ทิ้งสคริปต์นี้แล้วเริ่มใหม่หรือไม่?',
+    'episodes.regenerateScriptMessage': 'ภาพ บทพูด และเสียงทุกอย่างที่สร้างจากสคริปต์ปัจจุบันจะถูกลบทิ้งทั้งหมด แล้วเขียนสคริปต์ใหม่จากไอเดียเดิม ย้อนกลับไม่ได้',
+    'episodes.regenerateScriptConfirm': 'สร้างสคริปต์ใหม่',
   },
 };
 

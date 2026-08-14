@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useLanguage } from '../utils/i18n';
 import { ALL_VOICES, labelForVoice } from '../utils/voices';
 import { setEpisodeProgress } from '../utils/episodeProgressStore';
+import ConfirmDialog from './ConfirmDialog';
 
 const EXPRESSIONS = ['neutral', 'happy', 'sad', 'surprised', 'angry'];
 
@@ -97,6 +98,9 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
   const [pageErrors, setPageErrors] = useState({}); // `${order}:${side}` -> error message
   const [cooldownUntil, setCooldownUntil] = useState({}); // `${order}:${side}` -> timestamp
   const [, forceTick] = useState(0);
+  const [confirmingRegenScript, setConfirmingRegenScript] = useState(false);
+  const [regeneratingScript, setRegeneratingScript] = useState(false);
+  const [regenScriptError, setRegenScriptError] = useState(null);
 
   // Re-renders once a second while any scene is cooling down so the countdown on its button stays
   // live; stops itself once every cooldown lapses instead of ticking forever in the background.
@@ -161,6 +165,26 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
     }
   }
 
+  // Full reset: throws out this script and every scene image/dialogue/audio traced from it, and
+  // asks Claude for a brand-new one from the same premise (e.g. when a scene's on-screen cast came
+  // out wrong in a way no per-field edit above can fix). Episode status drops all the way back to
+  // "pending" server-side, which takes it out of PREVIEWABLE_STATUSES — the progress dots in
+  // EpisodesPage take over from here the same way they do for any other in-flight step.
+  async function regenerateScript() {
+    setRegeneratingScript(true);
+    setRegenScriptError(null);
+    try {
+      const { data } = await axios.post(`${API}/api/youtube/episodes/${episode._id}/regenerate-script`);
+      setConfirmingRegenScript(false);
+      setEpisodeProgress(data._id, { status: data.status, statusDetail: t('episodes.advancing') });
+      onUpdated(data);
+    } catch (err) {
+      setRegenScriptError(err.response?.data?.error || 'Failed to regenerate script');
+    } finally {
+      setRegeneratingScript(false);
+    }
+  }
+
   async function save() {
     setSaving(true);
     setError('');
@@ -220,9 +244,28 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
 
   return (
     <div className="flex flex-col gap-3 bg-violet-50 ring-1 ring-inset ring-violet-200 rounded-xl p-3">
-      <div>
-        <p className="text-xs font-bold text-violet-900">{t(headingKey)}</p>
-        <p className="text-[11px] text-violet-500">{t(subtitleKey)}</p>
+      <ConfirmDialog
+        open={confirmingRegenScript}
+        title={t('episodes.regenerateScriptTitle')}
+        message={t('episodes.regenerateScriptMessage')}
+        confirmLabel={t('episodes.regenerateScriptConfirm')}
+        loading={regeneratingScript}
+        error={regenScriptError}
+        onConfirm={regenerateScript}
+        onCancel={() => { setConfirmingRegenScript(false); setRegenScriptError(null); }}
+      />
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-xs font-bold text-violet-900">{t(headingKey)}</p>
+          <p className="text-[11px] text-violet-500">{t(subtitleKey)}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setConfirmingRegenScript(true)}
+          className="text-[11px] font-semibold px-3 py-1 rounded-full ring-1 ring-inset ring-violet-200 text-violet-400 hover:text-red-500 hover:ring-red-200 transition-colors whitespace-nowrap"
+        >
+          {t('episodes.reviewRegenerateScript')}
+        </button>
       </div>
 
       {voiceEntries.length > 0 && (
