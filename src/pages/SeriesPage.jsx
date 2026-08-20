@@ -3,9 +3,8 @@ import axios from 'axios';
 import CharacterAttributePicker from '../components/CharacterAttributePicker';
 import ConfirmDialog from '../components/ConfirmDialog';
 import StoryOutlineWizard from '../components/StoryOutlineWizard';
-import VoiceOptionsPicker from '../components/VoiceOptionsPicker';
 import { useLanguage } from '../utils/i18n';
-import { voicesForLocale, suggestVoice } from '../utils/voices';
+import { voicesForLocale } from '../utils/voices';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -14,7 +13,7 @@ const VOICE_LOCALES = [
   { value: 'th-TH', label: 'ไทย (Thai)' },
 ];
 
-function CharacterCard({ character, voiceLocale, onDelete, onEditCharacter }) {
+function CharacterCard({ character, onDelete, onEditCharacter }) {
   const { t } = useLanguage();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -22,8 +21,6 @@ function CharacterCard({ character, voiceLocale, onDelete, onEditCharacter }) {
 
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(character.name);
-  const [editVoiceName, setEditVoiceName] = useState(character.voiceName);
-  const [editVoiceOptions, setEditVoiceOptions] = useState(character.voiceOptions || []);
   const [editDescription, setEditDescription] = useState(character.description);
   const [editAttrs, setEditAttrs] = useState(character.attrs || null);
   const [savingEdit, setSavingEdit] = useState(false);
@@ -35,7 +32,7 @@ function CharacterCard({ character, voiceLocale, onDelete, onEditCharacter }) {
     setSavingEdit(true);
     setEditError('');
     try {
-      await onEditCharacter(character._id, { name: editName, description: editDescription, voiceName: editVoiceName, voiceOptions: editVoiceOptions, attrs: editAttrs });
+      await onEditCharacter(character._id, { name: editName, description: editDescription, attrs: editAttrs });
       setEditing(false);
     } catch (err) {
       setEditError(err.response?.data?.error || 'Failed to save changes');
@@ -100,24 +97,6 @@ function CharacterCard({ character, voiceLocale, onDelete, onEditCharacter }) {
             initialManualText={editDescription}
             onChange={({ description, attrs }) => { setEditDescription(description); setEditAttrs(attrs); }}
           />
-          <div className="flex flex-col gap-2">
-            <select
-              value={editVoiceName}
-              onChange={e => setEditVoiceName(e.target.value)}
-              className="px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10 bg-white"
-            >
-              {voicesForLocale(voiceLocale).some(v => v.value === editVoiceName) ? null : (
-                <option value={editVoiceName}>{editVoiceName}</option>
-              )}
-              {voicesForLocale(voiceLocale).map(v => <option key={v.value} value={v.value}>{v.label} ({v.gender})</option>)}
-            </select>
-            <VoiceOptionsPicker
-              locale={voiceLocale}
-              primaryVoice={editVoiceName}
-              options={editVoiceOptions}
-              onChange={setEditVoiceOptions}
-            />
-          </div>
           {editError && <p className="text-red-500 text-xs">{editError}</p>}
           <div className="flex items-center gap-2">
             <button
@@ -131,8 +110,6 @@ function CharacterCard({ character, voiceLocale, onDelete, onEditCharacter }) {
               onClick={() => {
                 setEditing(false);
                 setEditName(character.name);
-                setEditVoiceName(character.voiceName);
-                setEditVoiceOptions(character.voiceOptions || []);
                 setEditDescription(character.description);
                 setEditAttrs(character.attrs || null);
                 setEditError('');
@@ -171,18 +148,18 @@ export default function SeriesPage() {
 
   // New character form
   const [showNewCharacter, setShowNewCharacter] = useState(false);
-  const [newCharacter, setNewCharacter] = useState({ name: '', description: '', voiceName: 'en-US-AvaNeural', voiceOptions: [], attrs: null });
+  const [newCharacter, setNewCharacter] = useState({ name: '', description: '', attrs: null });
   const [creatingCharacter, setCreatingCharacter] = useState(false);
   const [characterError, setCharacterError] = useState('');
-  // Once the user manually touches the voice dropdown, stop auto-suggesting one every time the
-  // gender picker changes — the suggestion is only meant to fill a sensible starting point, not
-  // fight an explicit choice.
-  const [voiceManuallyPicked, setVoiceManuallyPicked] = useState(false);
 
   // Deleting the selected series
   const [confirmingDeleteSeries, setConfirmingDeleteSeries] = useState(false);
   const [deletingSeries, setDeletingSeries] = useState(false);
   const [deleteSeriesError, setDeleteSeriesError] = useState(null);
+
+  // Narrator voice — the one storyteller voice reading every episode of the selected series.
+  const [savingNarratorVoice, setSavingNarratorVoice] = useState(false);
+  const [narratorVoiceError, setNarratorVoiceError] = useState('');
 
   async function loadSeries() {
     try {
@@ -233,7 +210,7 @@ export default function SeriesPage() {
       const { data } = await axios.post(`${API}/api/youtube/characters`, { seriesId: selectedSeriesId, ...newCharacter });
       setCharacters(prev => [data, ...prev]);
       setShowNewCharacter(false);
-      setNewCharacter({ name: '', description: '', voiceName: 'en-US-AvaNeural', voiceOptions: [], attrs: null });
+      setNewCharacter({ name: '', description: '', attrs: null });
     } catch (err) {
       setCharacterError(err.response?.data?.error || 'Failed to create character');
     } finally {
@@ -244,6 +221,19 @@ export default function SeriesPage() {
   async function editCharacter(characterId, updates) {
     const { data } = await axios.patch(`${API}/api/youtube/characters/${characterId}`, updates);
     setCharacters(prev => prev.map(c => c._id === characterId ? data : c));
+  }
+
+  async function updateNarratorVoice(narratorVoice) {
+    setSavingNarratorVoice(true);
+    setNarratorVoiceError('');
+    try {
+      const { data } = await axios.patch(`${API}/api/youtube/series/${selectedSeriesId}`, { narratorVoice });
+      setSeriesList(prev => prev.map(s => s._id === selectedSeriesId ? data : s));
+    } catch (err) {
+      setNarratorVoiceError(err.response?.data?.error || 'Failed to update narrator voice');
+    } finally {
+      setSavingNarratorVoice(false);
+    }
   }
 
   async function deleteCharacter(characterId) {
@@ -377,21 +367,11 @@ export default function SeriesPage() {
             onConfirm={handleConfirmDeleteSeries}
             onCancel={() => { setConfirmingDeleteSeries(false); setDeleteSeriesError(null); }}
           />
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
             <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider">{t('series.charactersHeading', { title: selectedSeries.title })}</h2>
             <div className="flex items-center gap-1.5">
               <button
-                onClick={() => {
-                  // Default to a voice that actually exists for this series' locale — the
-                  // hardcoded en-US fallback set on mount would otherwise sit outside the
-                  // catalog dropdown for a th-TH series.
-                  if (!showNewCharacter) {
-                    const firstVoice = voicesForLocale(selectedSeries.voiceLocale)[0]?.value;
-                    setNewCharacter(v => ({ ...v, voiceName: firstVoice || v.voiceName, voiceOptions: [] }));
-                    setVoiceManuallyPicked(false);
-                  }
-                  setShowNewCharacter(v => !v);
-                }}
+                onClick={() => setShowNewCharacter(v => !v)}
                 className="px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors"
               >
                 {t('series.newCharacter')}
@@ -405,6 +385,24 @@ export default function SeriesPage() {
             </div>
           </div>
 
+          {/* One storyteller voice narrates every episode of this series — replaces the old
+              per-character voice pickers below. */}
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
+            <label className="text-xs font-semibold text-slate-500">{t('series.narratorVoiceLabel')}</label>
+            <select
+              value={selectedSeries.narratorVoice || ''}
+              disabled={savingNarratorVoice}
+              onChange={e => updateNarratorVoice(e.target.value)}
+              className="px-3 py-1.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10 bg-white disabled:opacity-50"
+            >
+              {voicesForLocale(selectedSeries.voiceLocale).some(v => v.value === selectedSeries.narratorVoice) ? null : (
+                <option value={selectedSeries.narratorVoice || ''}>{selectedSeries.narratorVoice || '—'}</option>
+              )}
+              {voicesForLocale(selectedSeries.voiceLocale).map(v => <option key={v.value} value={v.value}>{v.label} ({v.gender})</option>)}
+            </select>
+            {narratorVoiceError && <span className="text-red-500 text-xs">{narratorVoiceError}</span>}
+          </div>
+
           {showNewCharacter && (
             <form onSubmit={createCharacter} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-card mb-4 flex flex-col gap-3 max-w-xl animate-slide-up">
               <input
@@ -415,27 +413,7 @@ export default function SeriesPage() {
               <CharacterAttributePicker
                 initialAttrs={newCharacter.attrs}
                 initialManualText={newCharacter.description}
-                onChange={({ description, attrs }) => setNewCharacter(v => (
-                  // Auto-suggest a voice matching the picked gender as a starting point — but only
-                  // until the user actually touches the voice dropdown themselves (see the select's
-                  // onChange below), so this never fights an explicit choice.
-                  voiceManuallyPicked
-                    ? { ...v, description, attrs }
-                    : { ...v, description, attrs, voiceName: suggestVoice(selectedSeries.voiceLocale, attrs?.gender) || v.voiceName }
-                ))}
-              />
-              <select
-                value={newCharacter.voiceName}
-                onChange={e => { setVoiceManuallyPicked(true); setNewCharacter(v => ({ ...v, voiceName: e.target.value })); }}
-                className="px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10 bg-white"
-              >
-                {voicesForLocale(selectedSeries.voiceLocale).map(v => <option key={v.value} value={v.value}>{v.label} ({v.gender})</option>)}
-              </select>
-              <VoiceOptionsPicker
-                locale={selectedSeries.voiceLocale}
-                primaryVoice={newCharacter.voiceName}
-                options={newCharacter.voiceOptions}
-                onChange={(voiceOptions) => setNewCharacter(v => ({ ...v, voiceOptions }))}
+                onChange={({ description, attrs }) => setNewCharacter(v => ({ ...v, description, attrs }))}
               />
               {characterError && <p className="text-red-500 text-xs">{characterError}</p>}
               <button
@@ -457,7 +435,6 @@ export default function SeriesPage() {
                 <CharacterCard
                   key={c._id}
                   character={c}
-                  voiceLocale={selectedSeries.voiceLocale}
                   onDelete={deleteCharacter}
                   onEditCharacter={editCharacter}
                 />

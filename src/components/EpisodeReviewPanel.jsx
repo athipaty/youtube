@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useLanguage } from '../utils/i18n';
-import { ALL_VOICES, labelForVoice } from '../utils/voices';
 import { setEpisodeProgress } from '../utils/episodeProgressStore';
 import ConfirmDialog from './ConfirmDialog';
 
@@ -12,51 +11,15 @@ const PAGE_COOLDOWN_MS = 15000;
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-// This character's own saved voiceOptions (from the Series page) come first as quick picks, then
-// the rest of the full edge-tts catalog, then a free-text fallback for anything typed manually
-// before this UI existed.
-function VoicePicker({ characterId, name, value, voiceOptions, onChange }) {
-  const { t } = useLanguage();
-  const ownPicks = (voiceOptions || []).filter((v) => v !== value);
-  const restOfCatalog = ALL_VOICES.map((v) => v.value).filter((v) => v !== value && !ownPicks.includes(v));
-  const isKnown = value !== '' && (ALL_VOICES.some((v) => v.value === value) || (voiceOptions || []).includes(value));
-  return (
-    <div className="flex items-center gap-2">
-      <span className="text-xs font-semibold text-slate-600 w-20 truncate">{name}</span>
-      <select
-        value={isKnown ? value : '__custom'}
-        onChange={(e) => onChange(characterId, e.target.value === '__custom' ? '' : e.target.value)}
-        className="flex-1 px-2 py-1 text-xs border border-slate-200 rounded-lg outline-none focus:border-reel"
-      >
-        {value && <option value={value}>{labelForVoice(value)}</option>}
-        {ownPicks.length > 0 && (
-          <optgroup label={t('series.voiceOptionsLabel')}>
-            {ownPicks.map((v) => <option key={v} value={v}>{labelForVoice(v)}</option>)}
-          </optgroup>
-        )}
-        <optgroup label={t('episodes.reviewMoreVoices')}>
-          {restOfCatalog.map((v) => <option key={v} value={v}>{labelForVoice(v)}</option>)}
-        </optgroup>
-        <option value="__custom">{t('episodes.reviewCustomVoice')}</option>
-      </select>
-      {!isKnown && (
-        <input
-          type="text" value={value} onChange={(e) => onChange(characterId, e.target.value)}
-          className="flex-1 px-2 py-1 text-xs border border-slate-200 rounded-lg outline-none focus:border-reel"
-        />
-      )}
-    </div>
-  );
-}
-
 // Shown at every checkpoint that already has scene data to look at: "script" (script only),
 // "images" (+ spread art), "review" (+ narration, the original use case — after TTS, before the
 // expensive render), and "rendered" (+ finished video, editable so a mistake spotted after
 // rendering doesn't require starting a whole new episode — approving render again is what
-// actually replaces the video). Lets a human read the dialogue, look at each scene's left/right
-// page spread (once it exists), listen to the narration (once it exists), and fix anything —
-// wrong voice for a character being the most common case — with only the "Approve & render"
-// action itself gated to "review", matching the backend's own step restrictions.
+// actually replaces the video). Lets a human read the narration, look at each scene's art (once
+// it exists), listen to the narration audio (once it exists), and fix anything, with only the
+// "Approve & render" action itself gated to "review", matching the backend's own step
+// restrictions. The narrator voice itself isn't editable here — it's a series-wide setting (see
+// SeriesPage's narrator voice picker), not a per-episode one.
 export default function EpisodeReviewPanel({ episode, onUpdated }) {
   const { t } = useLanguage();
   const HEADING_BY_STATUS = {
@@ -73,23 +36,8 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
   const subtitleKey = SUBTITLE_BY_STATUS[episode.status] || 'episodes.reviewSubtitle';
   const [scenes, setScenes] = useState(() => episode.scenes.map((s) => ({
     ...s,
-    dialogue: s.dialogue.map((d) => ({ ...d })),
+    narration: s.narration.map((n) => ({ ...n })),
   })));
-  const [voices, setVoices] = useState(() => {
-    const map = {};
-    for (const scene of episode.scenes) {
-      for (const line of scene.dialogue) {
-        if (line.character?._id) {
-          map[line.character._id] = {
-            name: line.character.name,
-            voiceName: line.character.voiceName,
-            voiceOptions: line.character.voiceOptions || [],
-          };
-        }
-      }
-    }
-    return map;
-  });
   const [saving, setSaving] = useState(false);
   const [approving, setApproving] = useState(false);
   const [error, setError] = useState('');
@@ -112,14 +60,11 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
   const original = episode.scenes;
   const hasEdits = JSON.stringify(scenes.map((s) => ({
     backgroundPrompt: s.backgroundPrompt,
-    dialogue: s.dialogue.map((d) => ({ text: d.text, expression: d.expression })),
+    narration: s.narration.map((n) => ({ text: n.text, expression: n.expression })),
   }))) !== JSON.stringify(original.map((s) => ({
     backgroundPrompt: s.backgroundPrompt,
-    dialogue: s.dialogue.map((d) => ({ text: d.text, expression: d.expression })),
-  }))) || Object.entries(voices).some(([id, v]) => {
-    const orig = original.flatMap((s) => s.dialogue).find((d) => d.character?._id === id);
-    return orig && v.voiceName !== orig.character.voiceName;
-  });
+    narration: s.narration.map((n) => ({ text: n.text, expression: n.expression })),
+  })));
 
   function updateScenePrompt(order, value) {
     setScenes((prev) => prev.map((s) => (s.order === order ? { ...s, backgroundPrompt: value } : s)));
@@ -127,12 +72,9 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
   function updateLine(order, idx, field, value) {
     setScenes((prev) => prev.map((s) => {
       if (s.order !== order) return s;
-      const dialogue = s.dialogue.map((d, i) => (i === idx ? { ...d, [field]: value } : d));
-      return { ...s, dialogue };
+      const narration = s.narration.map((n, i) => (i === idx ? { ...n, [field]: value } : n));
+      return { ...s, narration };
     }));
-  }
-  function updateVoice(characterId, voiceName) {
-    setVoices((prev) => ({ ...prev, [characterId]: { ...prev[characterId], voiceName } }));
   }
   function cooldownSecondsLeft(order) {
     return Math.max(0, Math.ceil(((cooldownUntil[order] || 0) - Date.now()) / 1000));
@@ -164,7 +106,7 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
     }
   }
 
-  // Full reset: throws out this script and every scene image/dialogue/audio traced from it, and
+  // Full reset: throws out this script and every scene image/narration/audio traced from it, and
   // asks Claude for a brand-new one from the same premise (e.g. when a scene's on-screen cast came
   // out wrong in a way no per-field edit above can fix). Episode status drops all the way back to
   // "pending" server-side, which takes it out of PREVIEWABLE_STATUSES — the progress dots in
@@ -188,34 +130,26 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
     setSaving(true);
     setError('');
     try {
-      const voiceChanges = Object.entries(voices)
-        .filter(([id, v]) => {
-          const orig = original.flatMap((s) => s.dialogue).find((d) => d.character?._id === id);
-          return orig && v.voiceName !== orig.character.voiceName;
-        })
-        .map(([characterId, v]) => ({ characterId, voiceName: v.voiceName }));
-
       const { data } = await axios.put(`${API}/api/youtube/episodes/${episode._id}/scenes`, {
         scenes: scenes.map((s) => ({
           order: s.order,
           backgroundPrompt: s.backgroundPrompt,
-          dialogue: s.dialogue.map((d) => ({ text: d.text, expression: d.expression })),
+          narration: s.narration.map((n) => ({ text: n.text, expression: n.expression })),
         })),
-        voiceChanges,
       });
-      // A voice/background/text edit that actually invalidates something re-enters the pipeline
+      // A background/text edit that actually invalidates something re-enters the pipeline
       // server-side (fire-and-forget — see the backend route's comment) to regenerate just what
       // changed, landing back at whatever step it started from once done. That regeneration is
-      // what actually produces the new audio a changed voice needs — until it finishes, any
-      // dialogue line whose audioUrl got cleared still shows silent/broken, not the old clip, so
-      // there's no "still hear the old voice" case once this fires. Detected by comparing against
-      // this episode's own prior status (not a hardcoded 'review') since edits can now also be
-      // saved from "script"/"images"/"rendered" — a status *change* means the backend decided a
-      // step needs to redo; unchanged means it was just cosmetic (e.g. only an expression) or an
-      // edit at "script" that nothing downstream has been generated for yet. Seed the shared
-      // progress store immediately (rather than waiting for the first socket update, which can lag
-      // a beat behind this response) so the episode card shows "working" instead of a misleading
-      // idle "click to start" button for that gap.
+      // what actually produces the new audio a changed line needs — until it finishes, any
+      // narration segment whose audioUrl got cleared still shows silent/broken, not the old clip,
+      // so there's no "still hear the old line" case once this fires. Detected by comparing
+      // against this episode's own prior status (not a hardcoded 'review') since edits can now
+      // also be saved from "script"/"images"/"rendered" — a status *change* means the backend
+      // decided a step needs to redo; unchanged means it was just cosmetic (e.g. only an
+      // expression) or an edit at "script" that nothing downstream has been generated for yet.
+      // Seed the shared progress store immediately (rather than waiting for the first socket
+      // update, which can lag a beat behind this response) so the episode card shows "working"
+      // instead of a misleading idle "click to start" button for that gap.
       if (data.status !== episode.status) {
         setEpisodeProgress(data._id, { status: data.status, statusDetail: t('episodes.advancing') });
       }
@@ -238,8 +172,6 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
       setApproving(false);
     }
   }
-
-  const voiceEntries = Object.entries(voices);
 
   return (
     <div className="flex flex-col gap-3 bg-violet-50 ring-1 ring-inset ring-violet-200 rounded-xl p-3">
@@ -266,15 +198,6 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
           {t('episodes.reviewRegenerateScript')}
         </button>
       </div>
-
-      {voiceEntries.length > 0 && (
-        <div className="flex flex-col gap-1.5 bg-white rounded-lg p-2.5 ring-1 ring-inset ring-violet-100">
-          <p className="text-[11px] font-bold text-slate-500">{t('episodes.reviewVoicesHeading')}</p>
-          {voiceEntries.map(([characterId, v]) => (
-            <VoicePicker key={characterId} characterId={characterId} name={v.name} value={v.voiceName} voiceOptions={v.voiceOptions} onChange={updateVoice} />
-          ))}
-        </div>
-      )}
 
       <div className="flex flex-col gap-3 max-h-80 overflow-y-auto pr-1">
         {scenes.map((scene) => (
@@ -311,21 +234,16 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
               rows={2}
               className="text-[11px] px-2 py-1 border border-slate-200 rounded-lg outline-none focus:border-reel resize-none"
             />
-            {scene.dialogue.map((line, i) => (
+            {scene.narration.map((line, i) => (
               <div key={i} className="flex flex-col gap-1 pl-2 border-l-2 border-slate-100">
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-semibold text-slate-500 w-16 truncate">
-                    {line.character?.name || t('episodes.reviewNarrator')}
-                  </span>
-                  {line.character && (
-                    <select
-                      value={line.expression}
-                      onChange={(e) => updateLine(scene.order, i, 'expression', e.target.value)}
-                      className="text-[10px] px-1.5 py-0.5 border border-slate-200 rounded-md outline-none"
-                    >
-                      {EXPRESSIONS.map((ex) => <option key={ex} value={ex}>{ex}</option>)}
-                    </select>
-                  )}
+                  <select
+                    value={line.expression}
+                    onChange={(e) => updateLine(scene.order, i, 'expression', e.target.value)}
+                    className="text-[10px] px-1.5 py-0.5 border border-slate-200 rounded-md outline-none"
+                  >
+                    {EXPRESSIONS.map((ex) => <option key={ex} value={ex}>{ex}</option>)}
+                  </select>
                   {line.audioUrl && <audio controls src={line.audioUrl} className="h-6 flex-1 min-w-0" />}
                 </div>
                 <input

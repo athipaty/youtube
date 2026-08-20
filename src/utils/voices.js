@@ -35,23 +35,3 @@ export const ALL_VOICES = Object.entries(VOICE_CATALOG).flatMap(([locale, voices
 export function voicesForLocale(locale) {
   return VOICE_CATALOG[locale] || ALL_VOICES;
 }
-
-export function labelForVoice(value) {
-  const known = ALL_VOICES.find((v) => v.value === value);
-  return known ? `${known.label} (${known.gender})` : value;
-}
-
-// A reasonable starting voice for a freshly-created character, based on the gender picked in
-// CharacterAttributePicker — first matching-gender voice in that locale's catalog, so the "New
-// character" form's voice dropdown starts on something sensible instead of always the same fixed
-// voice regardless of who's being created. Deterministic (not randomized) so the same gender pick
-// always previews the same suggestion; it's still just a starting point — the dropdown stays fully
-// editable, and picking a different voice manually stops it from being overridden again.
-export function suggestVoice(locale, gender) {
-  const catalog = voicesForLocale(locale);
-  if (gender === 'male' || gender === 'female') {
-    const match = catalog.find((v) => v.gender.toLowerCase() === gender);
-    if (match) return match.value;
-  }
-  return catalog[0]?.value;
-}

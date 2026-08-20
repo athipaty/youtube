@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { useLanguage } from '../utils/i18n';
+import { voicesForLocale } from '../utils/voices';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -84,8 +85,7 @@ export default function StoryOutlineWizard({ onCreated, onCancel }) {
     setDraft((d) => ({ ...d, characters: d.characters.filter((_, idx) => idx !== i) }));
   }
   function addCharacter() {
-    const fallbackVoice = voiceLocale === 'th-TH' ? 'th-TH-PremwadeeNeural' : 'en-US-AvaNeural';
-    setDraft((d) => ({ ...d, characters: [...d.characters, { name: '', description: '', voiceName: fallbackVoice }] }));
+    setDraft((d) => ({ ...d, characters: [...d.characters, { name: '', description: '' }] }));
   }
 
   async function handleCommit() {
@@ -182,6 +182,16 @@ export default function StoryOutlineWizard({ onCreated, onCancel }) {
           <input type="text" value={draft.tone} onChange={(e) => updateDraft({ tone: e.target.value })} className={`${inputClass} flex-1 min-w-[120px]`} placeholder={t('series.tonePlaceholder')} />
         </div>
         <input type="text" value={draft.artStyle} onChange={(e) => updateDraft({ artStyle: e.target.value })} className={inputClass} placeholder={t('series.artStylePlaceholder')} />
+        <label className="flex items-center gap-1.5 text-xs text-slate-500">
+          {t('series.narratorVoiceLabel')}
+          <select
+            value={draft.narratorVoice}
+            onChange={(e) => updateDraft({ narratorVoice: e.target.value })}
+            className={`${inputClass} bg-white flex-1`}
+          >
+            {voicesForLocale(draft.voiceLocale).map((v) => <option key={v.value} value={v.value}>{v.label} ({v.gender})</option>)}
+          </select>
+        </label>
       </div>
 
       {/* ── Episodes ── */}
@@ -217,7 +227,6 @@ export default function StoryOutlineWizard({ onCreated, onCancel }) {
             </div>
             {c.role && <p className="text-[11px] text-slate-400 italic">{c.role}</p>}
             <textarea value={c.description} onChange={(e) => updateCharacter(i, { description: e.target.value })} rows={2} className={`${inputClass} resize-none`} placeholder={t('series.descriptionPlaceholder')} />
-            <input type="text" value={c.voiceName} onChange={(e) => updateCharacter(i, { voiceName: e.target.value })} className={inputClass} placeholder={t('series.voiceNamePlaceholder')} />
           </div>
         ))}
         <button type="button" onClick={addCharacter} className="self-start text-xs font-semibold px-3 py-1.5 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors">

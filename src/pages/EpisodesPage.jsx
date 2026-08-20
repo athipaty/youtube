@@ -238,7 +238,7 @@ function EpisodeCard({ episode, onRetry, onDelete, onUpdate, onUploadYoutube, on
           <div className="mt-2 flex flex-col gap-2">
             {episode.scenes.map((s, i) => (
               <div key={i} className="pl-2 border-l-2 border-slate-100">
-                {s.dialogue.map((d, j) => <p key={j}>{d.text}</p>)}
+                {s.narration.map((n, j) => <p key={j}>{n.text}</p>)}
               </div>
             ))}
           </div>
@@ -295,7 +295,7 @@ export default function EpisodesPage() {
       // The socket payload only ever carries status/statusDetail, so any status whose step just
       // filled in real data (script/title, scene spread images, or the final video/audio at
       // review) needs a refetch to actually show it — 'script' for the scenes Claude just wrote,
-      // 'images' for the left/right page art, 'review' for dialogue audio, 'done' for the final
+      // 'images' for the left/right page art, 'review' for narration audio, 'done' for the final
       // videoUrl.
       if (['script', 'images', 'review', 'done'].includes(status)) {
         axios.get(`${API}/api/youtube/episodes/${episodeId}`)
