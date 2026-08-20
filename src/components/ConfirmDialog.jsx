@@ -13,23 +13,23 @@ export default function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-[2px] p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-[2px] p-4"
       onClick={onCancel}
     >
       <div
         onClick={e => e.stopPropagation()}
-        className="w-full max-w-sm bg-white rounded-2xl shadow-card p-5 flex flex-col gap-3"
+        className="w-full max-w-sm bg-slate-900 rounded-2xl shadow-card p-5 flex flex-col gap-3"
       >
-        <h3 className="text-sm font-bold text-slate-800">{title}</h3>
-        {message && <p className="text-[13px] text-slate-500 leading-relaxed">{message}</p>}
+        <h3 className="text-sm font-bold text-slate-100">{title}</h3>
+        {message && <p className="text-[13px] text-slate-400 leading-relaxed">{message}</p>}
         {error && (
-          <p className="text-[12px] text-red-500 bg-red-50 ring-1 ring-inset ring-red-200 rounded-lg px-2.5 py-1.5">⚠ {error}</p>
+          <p className="text-[12px] text-red-400 bg-red-950 ring-1 ring-inset ring-red-800 rounded-lg px-2.5 py-1.5">⚠ {error}</p>
         )}
         <div className="flex items-center justify-end gap-2 mt-1">
           <button
             onClick={onCancel}
             disabled={loading}
-            className="text-xs font-semibold px-3.5 py-2 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors disabled:opacity-50"
+            className="text-xs font-semibold px-3.5 py-2 rounded-full bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors disabled:opacity-50"
           >
             {cancelLabel || t('common.cancel')}
           </button>

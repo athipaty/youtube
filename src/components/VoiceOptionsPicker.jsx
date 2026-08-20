@@ -23,16 +23,16 @@ export default function VoiceOptionsPicker({ locale, primaryVoice, options, onCh
 
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-[11px] font-semibold text-slate-400">{t('series.voiceOptionsLabel')}</span>
+      <span className="text-[11px] font-semibold text-slate-500">{t('series.voiceOptionsLabel')}</span>
       {options.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {options.map((v) => (
             <span
               key={v}
-              className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-200"
+              className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-violet-950 text-violet-300 ring-1 ring-inset ring-violet-800"
             >
               {labelForVoice(v)}
-              <button type="button" onClick={() => removeOption(v)} className="text-violet-400 hover:text-violet-700">×</button>
+              <button type="button" onClick={() => removeOption(v)} className="text-violet-500 hover:text-violet-300">×</button>
             </span>
           ))}
         </div>
@@ -42,14 +42,14 @@ export default function VoiceOptionsPicker({ locale, primaryVoice, options, onCh
           <select
             value={toAdd}
             onChange={(e) => setToAdd(e.target.value)}
-            className="flex-1 px-2 py-1 text-xs border border-slate-200 rounded-lg outline-none focus:border-reel bg-white"
+            className="flex-1 px-2 py-1 text-xs border border-slate-700 rounded-lg outline-none focus:border-reel bg-slate-900"
           >
             <option value="">{t('series.voiceOptionsAddPlaceholder')}</option>
             {available.map((v) => <option key={v.value} value={v.value}>{v.label} ({v.gender})</option>)}
           </select>
           <button
             type="button" disabled={!toAdd} onClick={addOption}
-            className="text-[11px] font-semibold px-2 py-1 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 disabled:opacity-40 transition-colors"
+            className="text-[11px] font-semibold px-2 py-1 rounded-lg bg-slate-800 text-slate-400 hover:bg-slate-700 disabled:opacity-40 transition-colors"
           >
             {t('series.voiceOptionsAdd')}
           </button>

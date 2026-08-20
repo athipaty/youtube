@@ -102,12 +102,12 @@ export default function StoryOutlineWizard({ onCreated, onCancel }) {
     }
   }
 
-  const inputClass = 'px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10';
+  const inputClass = 'px-3 py-2 border border-slate-700 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10';
 
   if (!draft) {
     return (
-      <form onSubmit={handleDraft} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-card mb-6 flex flex-col gap-3 max-w-xl animate-slide-up">
-        <p className="text-sm font-bold text-slate-900">{t('outline.heading')}</p>
+      <form onSubmit={handleDraft} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-card mb-6 flex flex-col gap-3 max-w-xl animate-slide-up">
+        <p className="text-sm font-bold text-slate-50">{t('outline.heading')}</p>
         <textarea
           placeholder={t('outline.ideaPlaceholder')}
           value={idea}
@@ -117,20 +117,20 @@ export default function StoryOutlineWizard({ onCreated, onCancel }) {
         />
         <button
           type="button" onClick={handleSuggestIdea} disabled={suggestingIdea}
-          className="self-start text-xs font-semibold px-3 py-1.5 rounded-full bg-violet-50 text-reel hover:bg-violet-100 disabled:opacity-50 transition-colors"
+          className="self-start text-xs font-semibold px-3 py-1.5 rounded-full bg-violet-950 text-reel hover:bg-violet-900 disabled:opacity-50 transition-colors"
         >
           {suggestingIdea ? t('outline.suggestingIdea') : t('outline.suggestIdea')}
         </button>
-        {suggestError && <p className="text-red-500 text-xs">{suggestError}</p>}
+        {suggestError && <p className="text-red-400 text-xs">{suggestError}</p>}
         <div className="flex gap-2 flex-wrap items-center">
           <select
             value={voiceLocale}
             onChange={(e) => setVoiceLocale(e.target.value)}
-            className={`${inputClass} bg-white`}
+            className={`${inputClass} bg-slate-900`}
           >
             {VOICE_LOCALES.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
           </select>
-          <label className="flex items-center gap-1.5 text-xs text-slate-500">
+          <label className="flex items-center gap-1.5 text-xs text-slate-400">
             {t('outline.targetMinutesLabel')}
             <input
               type="number" min={0.5} max={10} step={0.5}
@@ -139,7 +139,7 @@ export default function StoryOutlineWizard({ onCreated, onCancel }) {
               className={`${inputClass} w-20`}
             />
           </label>
-          <label className="flex items-center gap-1.5 text-xs text-slate-500">
+          <label className="flex items-center gap-1.5 text-xs text-slate-400">
             {t('outline.episodeCountLabel')}
             <input
               type="number" min={1} max={30} step={1}
@@ -150,7 +150,7 @@ export default function StoryOutlineWizard({ onCreated, onCancel }) {
             />
           </label>
         </div>
-        {draftError && <p className="text-red-500 text-xs">{draftError}</p>}
+        {draftError && <p className="text-red-400 text-xs">{draftError}</p>}
         <div className="flex items-center gap-2">
           <button
             type="submit" disabled={drafting || !idea.trim()}
@@ -158,7 +158,7 @@ export default function StoryOutlineWizard({ onCreated, onCancel }) {
           >
             {drafting ? t('outline.drafting') : t('outline.draftButton')}
           </button>
-          <button type="button" onClick={onCancel} className="px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700 transition-colors">
+          <button type="button" onClick={onCancel} className="px-4 py-2 text-sm font-semibold text-slate-400 hover:text-slate-200 transition-colors">
             {t('common.cancel')}
           </button>
         </div>
@@ -167,10 +167,10 @@ export default function StoryOutlineWizard({ onCreated, onCancel }) {
   }
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-card mb-6 flex flex-col gap-4 max-w-2xl animate-slide-up">
+    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-card mb-6 flex flex-col gap-4 max-w-2xl animate-slide-up">
       <div>
-        <p className="text-sm font-bold text-slate-900">{t('outline.reviewHeading')}</p>
-        <p className="text-xs text-slate-400">{t('outline.reviewSubtitle')}</p>
+        <p className="text-sm font-bold text-slate-50">{t('outline.reviewHeading')}</p>
+        <p className="text-xs text-slate-500">{t('outline.reviewSubtitle')}</p>
       </div>
 
       {/* ── Show identity ── */}
@@ -186,46 +186,46 @@ export default function StoryOutlineWizard({ onCreated, onCancel }) {
 
       {/* ── Episodes ── */}
       <div className="flex flex-col gap-2">
-        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t('outline.episodesHeading', { count: draft.episodes.length })}</p>
+        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('outline.episodesHeading', { count: draft.episodes.length })}</p>
         {draft.episodes.map((ep, i) => (
-          <div key={i} className="bg-slate-50 border border-slate-100 rounded-xl p-2.5 flex flex-col gap-1.5">
+          <div key={i} className="bg-slate-800 border border-slate-700 rounded-xl p-2.5 flex flex-col gap-1.5">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-slate-400 w-6 flex-shrink-0">{i + 1}.</span>
+              <span className="text-xs font-bold text-slate-500 w-6 flex-shrink-0">{i + 1}.</span>
               <input type="text" value={ep.title} onChange={(e) => updateEpisode(i, { title: e.target.value })} className={`${inputClass} flex-1`} placeholder={t('outline.episodeTitlePlaceholder')} />
-              <button type="button" onClick={() => removeEpisode(i)} className="text-[11px] font-semibold px-2 py-1 rounded-full text-slate-400 hover:text-red-500 transition-colors flex-shrink-0">
+              <button type="button" onClick={() => removeEpisode(i)} className="text-[11px] font-semibold px-2 py-1 rounded-full text-slate-500 hover:text-red-400 transition-colors flex-shrink-0">
                 {t('outline.remove')}
               </button>
             </div>
             <textarea value={ep.premise} onChange={(e) => updateEpisode(i, { premise: e.target.value })} rows={2} className={`${inputClass} resize-none`} placeholder={t('outline.episodePremisePlaceholder')} />
           </div>
         ))}
-        <button type="button" onClick={addEpisode} className="self-start text-xs font-semibold px-3 py-1.5 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors">
+        <button type="button" onClick={addEpisode} className="self-start text-xs font-semibold px-3 py-1.5 rounded-full bg-slate-800 text-slate-400 hover:bg-slate-700 transition-colors">
           {t('outline.addEpisode')}
         </button>
       </div>
 
       {/* ── Characters ── */}
       <div className="flex flex-col gap-2">
-        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t('outline.charactersHeading', { count: draft.characters.length })}</p>
+        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('outline.charactersHeading', { count: draft.characters.length })}</p>
         {draft.characters.map((c, i) => (
-          <div key={i} className="bg-slate-50 border border-slate-100 rounded-xl p-2.5 flex flex-col gap-1.5">
+          <div key={i} className="bg-slate-800 border border-slate-700 rounded-xl p-2.5 flex flex-col gap-1.5">
             <div className="flex items-center gap-2">
               <input type="text" value={c.name} onChange={(e) => updateCharacter(i, { name: e.target.value })} className={`${inputClass} flex-1`} placeholder={t('outline.characterNamePlaceholder')} />
-              <button type="button" onClick={() => removeCharacter(i)} className="text-[11px] font-semibold px-2 py-1 rounded-full text-slate-400 hover:text-red-500 transition-colors flex-shrink-0">
+              <button type="button" onClick={() => removeCharacter(i)} className="text-[11px] font-semibold px-2 py-1 rounded-full text-slate-500 hover:text-red-400 transition-colors flex-shrink-0">
                 {t('outline.remove')}
               </button>
             </div>
-            {c.role && <p className="text-[11px] text-slate-400 italic">{c.role}</p>}
+            {c.role && <p className="text-[11px] text-slate-500 italic">{c.role}</p>}
             <textarea value={c.description} onChange={(e) => updateCharacter(i, { description: e.target.value })} rows={2} className={`${inputClass} resize-none`} placeholder={t('series.descriptionPlaceholder')} />
             <input type="text" value={c.voiceName} onChange={(e) => updateCharacter(i, { voiceName: e.target.value })} className={inputClass} placeholder={t('series.voiceNamePlaceholder')} />
           </div>
         ))}
-        <button type="button" onClick={addCharacter} className="self-start text-xs font-semibold px-3 py-1.5 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors">
+        <button type="button" onClick={addCharacter} className="self-start text-xs font-semibold px-3 py-1.5 rounded-full bg-slate-800 text-slate-400 hover:bg-slate-700 transition-colors">
           {t('outline.addCharacter')}
         </button>
       </div>
 
-      {commitError && <p className="text-red-500 text-xs">{commitError}</p>}
+      {commitError && <p className="text-red-400 text-xs">{commitError}</p>}
       <div className="flex items-center gap-2">
         <button
           type="button" onClick={handleCommit}
@@ -234,7 +234,7 @@ export default function StoryOutlineWizard({ onCreated, onCancel }) {
         >
           {committing ? t('outline.committing') : t('outline.commitButton')}
         </button>
-        <button type="button" onClick={() => setDraft(null)} disabled={committing} className="px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700 transition-colors">
+        <button type="button" onClick={() => setDraft(null)} disabled={committing} className="px-4 py-2 text-sm font-semibold text-slate-400 hover:text-slate-200 transition-colors">
           {t('outline.startOver')}
         </button>
       </div>
