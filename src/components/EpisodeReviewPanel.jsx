@@ -174,7 +174,7 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
   }
 
   return (
-    <div className="flex flex-col gap-3 bg-violet-50 ring-1 ring-inset ring-violet-200 rounded-xl p-3">
+    <div className="flex flex-col gap-3 bg-violet-950 ring-1 ring-inset ring-violet-800 rounded-xl p-3">
       <ConfirmDialog
         open={confirmingRegenScript}
         title={t('episodes.regenerateScriptTitle')}
@@ -187,13 +187,13 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
       />
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-xs font-bold text-violet-900">{t(headingKey)}</p>
-          <p className="text-[11px] text-violet-500">{t(subtitleKey)}</p>
+          <p className="text-xs font-bold text-violet-100">{t(headingKey)}</p>
+          <p className="text-[11px] text-violet-400">{t(subtitleKey)}</p>
         </div>
         <button
           type="button"
           onClick={() => setConfirmingRegenScript(true)}
-          className="text-[11px] font-semibold px-3 py-1 rounded-full ring-1 ring-inset ring-violet-200 text-violet-400 hover:text-red-500 hover:ring-red-200 transition-colors whitespace-nowrap"
+          className="text-[11px] font-semibold px-3 py-1 rounded-full ring-1 ring-inset ring-violet-800 text-violet-500 hover:text-red-400 hover:ring-red-800 transition-colors whitespace-nowrap"
         >
           {t('episodes.reviewRegenerateScript')}
         </button>
@@ -201,7 +201,7 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
 
       <div className="flex flex-col gap-3 max-h-80 overflow-y-auto pr-1">
         {scenes.map((scene) => (
-          <div key={scene.order} className="bg-white rounded-lg p-2.5 ring-1 ring-inset ring-violet-100 flex flex-col gap-2">
+          <div key={scene.order} className="bg-slate-900 rounded-lg p-2.5 ring-1 ring-inset ring-violet-900 flex flex-col gap-2">
             {scene.imageUrl && (() => {
               const cooldown = cooldownSecondsLeft(scene.order);
               return (
@@ -218,12 +218,12 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
                         ? t('episodes.reviewRegenerateCooldown', { seconds: cooldown })
                         : t('episodes.reviewRegeneratePage')
                     }
-                    className="absolute top-1 right-1 min-w-6 h-6 px-1 flex items-center justify-center rounded-full bg-white/90 border border-slate-200 text-xs shadow-soft hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    className="absolute top-1 right-1 min-w-6 h-6 px-1 flex items-center justify-center rounded-full bg-slate-900/90 border border-slate-700 text-xs shadow-soft hover:bg-slate-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
                     {regeneratingKey === scene.order ? '⏳' : cooldown > 0 ? cooldown : '🔄'}
                   </button>
                   {pageErrors[scene.order] && (
-                    <p className="absolute inset-x-0 -bottom-4 text-[10px] text-red-500 truncate">{pageErrors[scene.order]}</p>
+                    <p className="absolute inset-x-0 -bottom-4 text-[10px] text-red-400 truncate">{pageErrors[scene.order]}</p>
                   )}
                 </div>
               );
@@ -232,15 +232,15 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
               value={scene.backgroundPrompt}
               onChange={(e) => updateScenePrompt(scene.order, e.target.value)}
               rows={2}
-              className="text-[11px] px-2 py-1 border border-slate-200 rounded-lg outline-none focus:border-reel resize-none"
+              className="text-[11px] px-2 py-1 border border-slate-700 rounded-lg outline-none focus:border-reel resize-none"
             />
             {scene.narration.map((line, i) => (
-              <div key={i} className="flex flex-col gap-1 pl-2 border-l-2 border-slate-100">
+              <div key={i} className="flex flex-col gap-1 pl-2 border-l-2 border-slate-800">
                 <div className="flex items-center gap-2">
                   <select
                     value={line.expression}
                     onChange={(e) => updateLine(scene.order, i, 'expression', e.target.value)}
-                    className="text-[10px] px-1.5 py-0.5 border border-slate-200 rounded-md outline-none"
+                    className="text-[10px] px-1.5 py-0.5 border border-slate-700 rounded-md outline-none"
                   >
                     {EXPRESSIONS.map((ex) => <option key={ex} value={ex}>{ex}</option>)}
                   </select>
@@ -249,7 +249,7 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
                 <input
                   type="text" value={line.text}
                   onChange={(e) => updateLine(scene.order, i, 'text', e.target.value)}
-                  className="text-xs px-2 py-1 border border-slate-200 rounded-lg outline-none focus:border-reel"
+                  className="text-xs px-2 py-1 border border-slate-700 rounded-lg outline-none focus:border-reel"
                 />
               </div>
             ))}
@@ -257,7 +257,7 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
         ))}
       </div>
 
-      {error && <p className="text-red-500 text-xs">{error}</p>}
+      {error && <p className="text-red-400 text-xs">{error}</p>}
 
       {/* "Approve & render" only ever makes sense at "review" — that's the one action the backend
           itself still restricts to that status. At "script"/"images"/"rendered" there's nothing to
@@ -268,7 +268,7 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
           {hasEdits ? (
             <button
               onClick={save} disabled={saving}
-              className="px-3 py-1.5 bg-white ring-1 ring-inset ring-reel/40 text-reel font-bold text-xs rounded-lg hover:bg-violet-50 disabled:opacity-50 transition-colors"
+              className="px-3 py-1.5 bg-slate-900 ring-1 ring-inset ring-reel/40 text-reel font-bold text-xs rounded-lg hover:bg-violet-950 disabled:opacity-50 transition-colors"
             >
               {saving ? t('episodes.reviewSaving') : t('episodes.reviewSaveChanges')}
             </button>
@@ -280,7 +280,7 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
               {approving ? t('episodes.reviewApproving') : t('episodes.reviewApprove')}
             </button>
           )}
-          {hasEdits && <span className="text-[11px] text-violet-400">{t('episodes.reviewUnsavedHint')}</span>}
+          {hasEdits && <span className="text-[11px] text-violet-500">{t('episodes.reviewUnsavedHint')}</span>}
         </div>
       )}
     </div>

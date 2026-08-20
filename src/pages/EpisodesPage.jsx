@@ -121,7 +121,7 @@ function EpisodeCard({ episode, onRetry, onDelete, onUpdate, onUploadYoutube, on
   const stepLabels = Object.fromEntries(STEP_ORDER.map(s => [s, t(`episodeSteps.${s}`)]));
 
   return (
-    <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-soft flex flex-col gap-2">
+    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-soft flex flex-col gap-2">
       <ConfirmDialog
         open={confirmingDelete}
         title={t('episodes.deleteEpisodeTitle')}
@@ -133,7 +133,7 @@ function EpisodeCard({ episode, onRetry, onDelete, onUpdate, onUploadYoutube, on
         onCancel={() => { setConfirmingDelete(false); setDeleteError(null); }}
       />
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-bold text-slate-900">
+        <p className="text-sm font-bold text-slate-50">
           Ep. {episode.episodeNumber}{titleSuffix}
         </p>
         {/* Deletable any time nothing is actually running — a manual step just sitting idle,
@@ -143,18 +143,18 @@ function EpisodeCard({ episode, onRetry, onDelete, onUpdate, onUploadYoutube, on
         {!isAdvancing && !['tts', 'rendering', 'uploading', 'publishing'].includes(status) && (
           <button
             onClick={() => setConfirmingDelete(true)}
-            className="text-[11px] font-semibold px-3 py-1 rounded-full ring-1 ring-inset ring-slate-200 text-slate-400 hover:text-red-500 hover:ring-red-200 transition-colors whitespace-nowrap"
+            className="text-[11px] font-semibold px-3 py-1 rounded-full ring-1 ring-inset ring-slate-700 text-slate-500 hover:text-red-400 hover:ring-red-800 transition-colors whitespace-nowrap"
           >
             {t('episodes.deleteEpisode')}
           </button>
         )}
       </div>
-      <p className="text-xs text-slate-400">{episode.premise}</p>
+      <p className="text-xs text-slate-500">{episode.premise}</p>
 
       {episodeCharacters.length > 0 && (
         <div className="flex items-center gap-1.5 flex-wrap">
           {episodeCharacters.map((c) => (
-            <span key={c._id} className="text-[10px] font-semibold text-slate-500 bg-slate-50 rounded-full px-2 py-1 ring-1 ring-inset ring-slate-100 truncate max-w-[100px]">
+            <span key={c._id} className="text-[10px] font-semibold text-slate-400 bg-slate-800 rounded-full px-2 py-1 ring-1 ring-inset ring-slate-700 truncate max-w-[100px]">
               {c.name}
             </span>
           ))}
@@ -175,7 +175,7 @@ function EpisodeCard({ episode, onRetry, onDelete, onUpdate, onUploadYoutube, on
       {isManualStep && (
         <div className="flex flex-col gap-1.5">
           {isAdvancing ? (
-            <p className="text-xs text-slate-400">{statusDetail || t('episodes.advancing')}</p>
+            <p className="text-xs text-slate-500">{statusDetail || t('episodes.advancing')}</p>
           ) : (
             <button
               onClick={handleAdvance}
@@ -184,16 +184,16 @@ function EpisodeCard({ episode, onRetry, onDelete, onUpdate, onUploadYoutube, on
               {t(`episodes.advance.${status}`)}
             </button>
           )}
-          {advanceError && <p className="text-xs text-red-500">{advanceError}</p>}
+          {advanceError && <p className="text-xs text-red-400">{advanceError}</p>}
         </div>
       )}
 
       {status === 'error' && (
         <div className="flex flex-col gap-1.5">
-          <p className="text-xs text-red-500">⚠ {episode.errorMessage || t('episodes.errorFallback')}</p>
+          <p className="text-xs text-red-400">⚠ {episode.errorMessage || t('episodes.errorFallback')}</p>
           <button
             onClick={() => onRetry(episode._id)}
-            className="self-start text-[11px] font-semibold px-3 py-1 rounded-full ring-1 ring-inset ring-reel/40 text-reel hover:bg-violet-50 transition-colors"
+            className="self-start text-[11px] font-semibold px-3 py-1 rounded-full ring-1 ring-inset ring-reel/40 text-reel hover:bg-violet-950 transition-colors"
           >
             {t('episodes.retry')}
           </button>
@@ -213,31 +213,31 @@ function EpisodeCard({ episode, onRetry, onDelete, onUpdate, onUploadYoutube, on
             <button
               onClick={handleRerender}
               disabled={uploading || rerendering}
-              className="self-start text-[11px] font-semibold px-3 py-1 rounded-full ring-1 ring-inset ring-reel/40 text-reel hover:bg-violet-50 disabled:opacity-50 transition-colors"
+              className="self-start text-[11px] font-semibold px-3 py-1 rounded-full ring-1 ring-inset ring-reel/40 text-reel hover:bg-violet-950 disabled:opacity-50 transition-colors"
             >
               {rerendering ? t('episodes.rerendering') : t('episodes.rerender')}
             </button>
           </div>
-          {uploadError && <p className="text-xs text-red-500">{uploadError}</p>}
-          {rerenderError && <p className="text-xs text-red-500">{rerenderError}</p>}
+          {uploadError && <p className="text-xs text-red-400">{uploadError}</p>}
+          {rerenderError && <p className="text-xs text-red-400">{rerenderError}</p>}
         </div>
       )}
 
       {status === 'done' && episode.youtubeUrl && (
         <a
           href={episode.youtubeUrl} target="_blank" rel="noreferrer"
-          className="self-start text-[11px] font-semibold px-3 py-1 rounded-full ring-1 ring-inset ring-reel/40 text-reel hover:bg-violet-50 transition-colors"
+          className="self-start text-[11px] font-semibold px-3 py-1 rounded-full ring-1 ring-inset ring-reel/40 text-reel hover:bg-violet-950 transition-colors"
         >
           {t('episodes.watchOnYoutube')}
         </a>
       )}
 
       {status === 'done' && episode.scenes?.length > 0 && (
-        <details className="text-xs text-slate-500">
-          <summary className="cursor-pointer font-semibold text-slate-600">{t('episodes.scriptSummary', { count: episode.scenes.length })}</summary>
+        <details className="text-xs text-slate-400">
+          <summary className="cursor-pointer font-semibold text-slate-300">{t('episodes.scriptSummary', { count: episode.scenes.length })}</summary>
           <div className="mt-2 flex flex-col gap-2">
             {episode.scenes.map((s, i) => (
-              <div key={i} className="pl-2 border-l-2 border-slate-100">
+              <div key={i} className="pl-2 border-l-2 border-slate-800">
                 {s.narration.map((n, j) => <p key={j}>{n.text}</p>)}
               </div>
             ))}
@@ -362,11 +362,11 @@ export default function EpisodesPage() {
 
   return (
     <div className="px-3 py-4 md:px-6 md:py-7 max-w-[1600px] mx-auto">
-      <h1 className="text-lg font-bold text-slate-900 mb-1">{t('episodes.heading')}</h1>
-      <p className="text-sm text-slate-400 mb-4">{t('episodes.subtitle')}</p>
+      <h1 className="text-lg font-bold text-slate-50 mb-1">{t('episodes.heading')}</h1>
+      <p className="text-sm text-slate-500 mb-4">{t('episodes.subtitle')}</p>
 
       {seriesList.length === 0 ? (
-        <p className="text-sm text-slate-400">{t('episodes.noSeries')}</p>
+        <p className="text-sm text-slate-500">{t('episodes.noSeries')}</p>
       ) : (
         <>
           <div className="flex items-center gap-2 flex-wrap mb-4">
@@ -375,7 +375,7 @@ export default function EpisodesPage() {
                 key={s._id}
                 onClick={() => setSelectedSeriesId(s._id)}
                 className={`px-3 py-1.5 rounded-full text-sm font-semibold transition-all ${
-                  selectedSeriesId === s._id ? 'bg-reel text-white shadow-soft' : 'bg-white border border-slate-200 text-slate-600 hover:border-reel/40'
+                  selectedSeriesId === s._id ? 'bg-reel text-white shadow-soft' : 'bg-slate-900 border border-slate-700 text-slate-300 hover:border-reel/40'
                 }`}
               >
                 {s.title}
@@ -383,16 +383,16 @@ export default function EpisodesPage() {
             ))}
           </div>
 
-          <form onSubmit={createEpisode} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-card mb-6 flex flex-col gap-3 max-w-xl">
+          <form onSubmit={createEpisode} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-card mb-6 flex flex-col gap-3 max-w-xl">
             <textarea
               placeholder={t('episodes.premisePlaceholder')}
               value={premise}
               onChange={e => setPremise(e.target.value)}
               rows={2}
               disabled={creating}
-              className="px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10 resize-none disabled:bg-slate-50"
+              className="px-3 py-2 border border-slate-700 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10 resize-none disabled:bg-slate-950"
             />
-            {createError && <p className="text-red-500 text-xs">{createError}</p>}
+            {createError && <p className="text-red-400 text-xs">{createError}</p>}
             <button
               type="submit" disabled={creating || !premise.trim()}
               className="self-start px-4 py-2 bg-gradient-to-b from-violet-400 to-reel text-white font-bold text-sm rounded-xl hover:brightness-105 active:scale-[0.98] disabled:opacity-50 transition-all shadow-soft"
@@ -402,9 +402,9 @@ export default function EpisodesPage() {
           </form>
 
           {loadingEpisodes ? (
-            <p className="text-sm text-slate-400">{t('common.loading')}</p>
+            <p className="text-sm text-slate-500">{t('common.loading')}</p>
           ) : episodes.length === 0 ? (
-            <p className="text-sm text-slate-400">{t('episodes.noEpisodes')}</p>
+            <p className="text-sm text-slate-500">{t('episodes.noEpisodes')}</p>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
               {episodes.map(ep => <EpisodeCard key={ep._id} episode={ep} onRetry={retryEpisode} onDelete={deleteEpisode} onUpdate={updateEpisode} onUploadYoutube={uploadEpisodeToYoutube} onRerender={rerenderEpisode} onAdvance={advanceEpisode} />)}

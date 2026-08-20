@@ -55,7 +55,7 @@ function CharacterCard({ character, onDelete, onEditCharacter }) {
   }
 
   return (
-    <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-soft flex flex-col gap-2">
+    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-soft flex flex-col gap-2">
       <ConfirmDialog
         open={confirmingDelete}
         title={t('series.deleteCharacterTitle')}
@@ -67,19 +67,19 @@ function CharacterCard({ character, onDelete, onEditCharacter }) {
         onCancel={() => { setConfirmingDelete(false); setDeleteError(null); }}
       />
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-bold text-slate-900">{character.name}</p>
+        <p className="text-sm font-bold text-slate-50">{character.name}</p>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           {!editing && (
             <button
               onClick={() => setEditing(true)}
-              className="text-[11px] font-semibold px-3 py-1 rounded-full ring-1 ring-inset ring-slate-200 text-slate-500 hover:text-reel hover:ring-reel/40 transition-colors whitespace-nowrap"
+              className="text-[11px] font-semibold px-3 py-1 rounded-full ring-1 ring-inset ring-slate-700 text-slate-400 hover:text-reel hover:ring-reel/40 transition-colors whitespace-nowrap"
             >
               {t('series.editCharacter')}
             </button>
           )}
           <button
             onClick={() => setConfirmingDelete(true)}
-            className="text-[11px] font-semibold px-3 py-1 rounded-full ring-1 ring-inset ring-slate-200 text-slate-400 hover:text-red-500 hover:ring-red-200 transition-colors whitespace-nowrap"
+            className="text-[11px] font-semibold px-3 py-1 rounded-full ring-1 ring-inset ring-slate-700 text-slate-500 hover:text-red-400 hover:ring-red-800 transition-colors whitespace-nowrap"
           >
             {t('series.deleteCharacter')}
           </button>
@@ -87,17 +87,17 @@ function CharacterCard({ character, onDelete, onEditCharacter }) {
       </div>
 
       {editing ? (
-        <form onSubmit={handleSaveEdit} className="flex flex-col gap-3 bg-slate-50 border border-slate-100 rounded-xl p-3 animate-slide-up">
+        <form onSubmit={handleSaveEdit} className="flex flex-col gap-3 bg-slate-800 border border-slate-700 rounded-xl p-3 animate-slide-up">
           <input
             type="text" value={editName} onChange={e => setEditName(e.target.value)}
-            className="px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10"
+            className="px-3 py-2 border border-slate-700 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10"
           />
           <CharacterAttributePicker
             initialAttrs={editAttrs}
             initialManualText={editDescription}
             onChange={({ description, attrs }) => { setEditDescription(description); setEditAttrs(attrs); }}
           />
-          {editError && <p className="text-red-500 text-xs">{editError}</p>}
+          {editError && <p className="text-red-400 text-xs">{editError}</p>}
           <div className="flex items-center gap-2">
             <button
               type="submit" disabled={savingEdit}
@@ -114,14 +114,14 @@ function CharacterCard({ character, onDelete, onEditCharacter }) {
                 setEditAttrs(character.attrs || null);
                 setEditError('');
               }}
-              className="px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700 transition-colors"
+              className="px-4 py-2 text-sm font-semibold text-slate-400 hover:text-slate-200 transition-colors"
             >
               {t('common.cancel')}
             </button>
           </div>
         </form>
       ) : (
-        <p className="text-xs text-slate-400">{character.description}</p>
+        <p className="text-xs text-slate-500">{character.description}</p>
       )}
     </div>
   );
@@ -269,20 +269,20 @@ export default function SeriesPage() {
 
   return (
     <div className="px-3 py-4 md:px-6 md:py-7 max-w-[1600px] mx-auto">
-      <h1 className="text-lg font-bold text-slate-900 mb-1">{t('series.heading')}</h1>
-      <p className="text-sm text-slate-400 mb-4">{t('series.subtitle')}</p>
+      <h1 className="text-lg font-bold text-slate-50 mb-1">{t('series.heading')}</h1>
+      <p className="text-sm text-slate-500 mb-4">{t('series.subtitle')}</p>
 
       {/* ── Series list + picker ── */}
       <div className="flex items-center gap-2 flex-wrap mb-4">
         {loadingSeries ? (
-          <p className="text-sm text-slate-400">{t('common.loading')}</p>
+          <p className="text-sm text-slate-500">{t('common.loading')}</p>
         ) : (
           seriesList.map(s => (
             <button
               key={s._id}
               onClick={() => setSelectedSeriesId(s._id)}
               className={`px-3 py-1.5 rounded-full text-sm font-semibold transition-all ${
-                selectedSeriesId === s._id ? 'bg-reel text-white shadow-soft' : 'bg-white border border-slate-200 text-slate-600 hover:border-reel/40'
+                selectedSeriesId === s._id ? 'bg-reel text-white shadow-soft' : 'bg-slate-900 border border-slate-700 text-slate-300 hover:border-reel/40'
               }`}
             >
               {s.title}
@@ -297,7 +297,7 @@ export default function SeriesPage() {
         </button>
         <button
           onClick={() => { setShowNewSeries(v => !v); setShowOutlineWizard(false); }}
-          className="px-3 py-1.5 rounded-full text-sm font-semibold bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors"
+          className="px-3 py-1.5 rounded-full text-sm font-semibold bg-slate-800 text-slate-400 hover:bg-slate-700 transition-colors"
         >
           {t('series.newSeries')}
         </button>
@@ -308,28 +308,28 @@ export default function SeriesPage() {
       )}
 
       {showNewSeries && (
-        <form onSubmit={createSeries} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-card mb-6 flex flex-col gap-3 max-w-xl animate-slide-up">
+        <form onSubmit={createSeries} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-card mb-6 flex flex-col gap-3 max-w-xl animate-slide-up">
           <input
             type="text" placeholder={t('series.titlePlaceholder')} value={newSeries.title}
             onChange={e => setNewSeries(v => ({ ...v, title: e.target.value }))}
-            className="px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10"
+            className="px-3 py-2 border border-slate-700 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10"
           />
           <textarea
             placeholder={t('series.premisePlaceholder')} value={newSeries.premise}
             onChange={e => setNewSeries(v => ({ ...v, premise: e.target.value }))}
             rows={2}
-            className="px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10 resize-none"
+            className="px-3 py-2 border border-slate-700 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10 resize-none"
           />
           <div className="flex gap-2 flex-wrap">
             <input
               type="text" placeholder={t('series.genrePlaceholder')} value={newSeries.genre}
               onChange={e => setNewSeries(v => ({ ...v, genre: e.target.value }))}
-              className="flex-1 min-w-[140px] px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10"
+              className="flex-1 min-w-[140px] px-3 py-2 border border-slate-700 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10"
             />
             <select
               value={newSeries.voiceLocale}
               onChange={e => setNewSeries(v => ({ ...v, voiceLocale: e.target.value }))}
-              className="px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10 bg-white"
+              className="px-3 py-2 border border-slate-700 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10 bg-slate-900"
             >
               {VOICE_LOCALES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
             </select>
@@ -337,14 +337,14 @@ export default function SeriesPage() {
           <input
             type="text" placeholder={t('series.tonePlaceholder')} value={newSeries.tone}
             onChange={e => setNewSeries(v => ({ ...v, tone: e.target.value }))}
-            className="px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10"
+            className="px-3 py-2 border border-slate-700 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10"
           />
           <input
             type="text" placeholder={t('series.artStylePlaceholder')} value={newSeries.artStyle}
             onChange={e => setNewSeries(v => ({ ...v, artStyle: e.target.value }))}
-            className="px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10"
+            className="px-3 py-2 border border-slate-700 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10"
           />
-          {seriesError && <p className="text-red-500 text-xs">{seriesError}</p>}
+          {seriesError && <p className="text-red-400 text-xs">{seriesError}</p>}
           <button
             type="submit" disabled={creatingSeries}
             className="self-start px-4 py-2 bg-reel text-white font-bold text-sm rounded-xl hover:bg-reel-dark active:scale-[0.98] disabled:opacity-50 transition-all"
@@ -368,17 +368,17 @@ export default function SeriesPage() {
             onCancel={() => { setConfirmingDeleteSeries(false); setDeleteSeriesError(null); }}
           />
           <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
-            <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider">{t('series.charactersHeading', { title: selectedSeries.title })}</h2>
+            <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider">{t('series.charactersHeading', { title: selectedSeries.title })}</h2>
             <div className="flex items-center gap-1.5">
               <button
                 onClick={() => setShowNewCharacter(v => !v)}
-                className="px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors"
+                className="px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-800 text-slate-400 hover:bg-slate-700 transition-colors"
               >
                 {t('series.newCharacter')}
               </button>
               <button
                 onClick={() => setConfirmingDeleteSeries(true)}
-                className="px-3 py-1.5 rounded-full text-xs font-semibold ring-1 ring-inset ring-slate-200 text-slate-400 hover:text-red-500 hover:ring-red-200 transition-colors whitespace-nowrap"
+                className="px-3 py-1.5 rounded-full text-xs font-semibold ring-1 ring-inset ring-slate-700 text-slate-500 hover:text-red-400 hover:ring-red-800 transition-colors whitespace-nowrap"
               >
                 {t('series.deleteSeries')}
               </button>
@@ -388,34 +388,34 @@ export default function SeriesPage() {
           {/* One storyteller voice narrates every episode of this series — replaces the old
               per-character voice pickers below. */}
           <div className="flex items-center gap-2 mb-4 flex-wrap">
-            <label className="text-xs font-semibold text-slate-500">{t('series.narratorVoiceLabel')}</label>
+            <label className="text-xs font-semibold text-slate-400">{t('series.narratorVoiceLabel')}</label>
             <select
               value={selectedSeries.narratorVoice || ''}
               disabled={savingNarratorVoice}
               onChange={e => updateNarratorVoice(e.target.value)}
-              className="px-3 py-1.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10 bg-white disabled:opacity-50"
+              className="px-3 py-1.5 border border-slate-700 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10 bg-slate-900 disabled:opacity-50"
             >
               {voicesForLocale(selectedSeries.voiceLocale).some(v => v.value === selectedSeries.narratorVoice) ? null : (
                 <option value={selectedSeries.narratorVoice || ''}>{selectedSeries.narratorVoice || '—'}</option>
               )}
               {voicesForLocale(selectedSeries.voiceLocale).map(v => <option key={v.value} value={v.value}>{v.label} ({v.gender})</option>)}
             </select>
-            {narratorVoiceError && <span className="text-red-500 text-xs">{narratorVoiceError}</span>}
+            {narratorVoiceError && <span className="text-red-400 text-xs">{narratorVoiceError}</span>}
           </div>
 
           {showNewCharacter && (
-            <form onSubmit={createCharacter} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-card mb-4 flex flex-col gap-3 max-w-xl animate-slide-up">
+            <form onSubmit={createCharacter} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-card mb-4 flex flex-col gap-3 max-w-xl animate-slide-up">
               <input
                 type="text" placeholder={t('series.namePlaceholder')} value={newCharacter.name}
                 onChange={e => setNewCharacter(v => ({ ...v, name: e.target.value }))}
-                className="px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10"
+                className="px-3 py-2 border border-slate-700 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10"
               />
               <CharacterAttributePicker
                 initialAttrs={newCharacter.attrs}
                 initialManualText={newCharacter.description}
                 onChange={({ description, attrs }) => setNewCharacter(v => ({ ...v, description, attrs }))}
               />
-              {characterError && <p className="text-red-500 text-xs">{characterError}</p>}
+              {characterError && <p className="text-red-400 text-xs">{characterError}</p>}
               <button
                 type="submit" disabled={creatingCharacter}
                 className="self-start px-4 py-2 bg-reel text-white font-bold text-sm rounded-xl hover:bg-reel-dark active:scale-[0.98] disabled:opacity-50 transition-all"
@@ -426,9 +426,9 @@ export default function SeriesPage() {
           )}
 
           {loadingCharacters ? (
-            <p className="text-sm text-slate-400">{t('common.loading')}</p>
+            <p className="text-sm text-slate-500">{t('common.loading')}</p>
           ) : characters.length === 0 ? (
-            <p className="text-sm text-slate-400">{t('series.noCharacters')}</p>
+            <p className="text-sm text-slate-500">{t('series.noCharacters')}</p>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
               {characters.map(c => (

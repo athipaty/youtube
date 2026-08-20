@@ -202,7 +202,7 @@ export function composeDescription(a) {
 
 function Field({ label: text, children }) {
   return (
-    <label className="flex flex-col gap-1 text-xs font-semibold text-slate-500">
+    <label className="flex flex-col gap-1 text-xs font-semibold text-slate-400">
       {text}
       {children}
     </label>
@@ -210,7 +210,7 @@ function Field({ label: text, children }) {
 }
 
 function selectClass() {
-  return 'px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10 bg-white font-normal text-slate-900';
+  return 'px-3 py-2 border border-slate-700 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10 bg-slate-900 font-normal text-slate-100';
 }
 
 export default function CharacterAttributePicker({ onChange, onManualToggle, initialAttrs, initialManualText }) {
@@ -249,7 +249,7 @@ export default function CharacterAttributePicker({ onChange, onManualToggle, ini
           value={manualText}
           onChange={e => setManualText(e.target.value)}
           rows={3}
-          className="px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10 resize-none"
+          className="px-3 py-2 border border-slate-700 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10 resize-none"
         />
         <button
           type="button"
@@ -350,7 +350,7 @@ export default function CharacterAttributePicker({ onChange, onManualToggle, ini
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <p className="text-xs font-semibold text-slate-500">{t('attrPicker.accessories')}</p>
+        <p className="text-xs font-semibold text-slate-400">{t('attrPicker.accessories')}</p>
         <div className="flex flex-wrap gap-1.5">
           {ACCESSORIES.map(o => {
             const active = attrs.accessories.includes(o.value);
@@ -359,7 +359,7 @@ export default function CharacterAttributePicker({ onChange, onManualToggle, ini
                 type="button" key={o.value}
                 onClick={() => toggleAccessory(o.value)}
                 className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
-                  active ? 'bg-reel text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                  active ? 'bg-reel text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
                 }`}
               >
                 {label(o, lang)}
@@ -372,18 +372,18 @@ export default function CharacterAttributePicker({ onChange, onManualToggle, ini
       <input
         type="text" placeholder={t('attrPicker.extraPlaceholder')} value={attrs.extra}
         onChange={e => set('extra', e.target.value)}
-        className="px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10"
+        className="px-3 py-2 border border-slate-700 rounded-xl text-sm outline-none focus:border-reel focus:ring-4 focus:ring-reel/10"
       />
 
-      <div className="bg-slate-50 border border-slate-100 rounded-xl px-3 py-2">
-        <p className="text-[11px] font-semibold text-slate-400 mb-0.5">{t('attrPicker.preview')}</p>
-        <p className="text-xs text-slate-600">{composed || '—'}</p>
+      <div className="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2">
+        <p className="text-[11px] font-semibold text-slate-500 mb-0.5">{t('attrPicker.preview')}</p>
+        <p className="text-xs text-slate-300">{composed || '—'}</p>
       </div>
 
       <button
         type="button"
         onClick={() => { setManualText(composed); setManual(true); onManualToggle?.(true); }}
-        className="self-start text-xs font-semibold text-slate-400 hover:text-reel underline"
+        className="self-start text-xs font-semibold text-slate-500 hover:text-reel underline"
       >
         {t('attrPicker.useManual')}
       </button>

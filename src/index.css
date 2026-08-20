@@ -8,6 +8,8 @@ html {
   -moz-osx-font-smoothing: grayscale;
   height: 100%;
   overscroll-behavior-y: none;
+  /* Prevents a white flash before React mounts/paints its own dark background. */
+  background-color: #000;
 }
 
 body {
@@ -15,6 +17,17 @@ body {
   min-height: 100%;
   overscroll-behavior-y: none;
   touch-action: manipulation;
+}
+
+@layer base {
+  /* Safety net for the black theme: most inputs/textareas/selects across the app set their own
+     background/text utility classes (which still win — a class selector outranks this bare
+     element one), but several rely on the browser's default white input background. Without
+     this, those would render as stray white boxes against the app's dark background. */
+  input, textarea, select {
+    background-color: #0f172a; /* slate-900 */
+    color: #f1f5f9; /* slate-100 */
+  }
 }
 
 button, a {
@@ -32,6 +45,6 @@ button:active, a:active {
   background: transparent;
 }
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background-color: rgba(15, 23, 42, 0.12);
+  background-color: rgba(255, 255, 255, 0.15);
   border-radius: 9999px;
 }
