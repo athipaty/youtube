@@ -19,8 +19,7 @@ function VoicePicker({ characterId, name, value, voiceOptions, onChange }) {
   const { t } = useLanguage();
   const ownPicks = (voiceOptions || []).filter((v) => v !== value);
   const restOfCatalog = ALL_VOICES.map((v) => v.value).filter((v) => v !== value && !ownPicks.includes(v));
-  const known = [value, ...ownPicks, ...restOfCatalog];
-  const isKnown = known.includes(value);
+  const isKnown = value !== '' && (ALL_VOICES.some((v) => v.value === value) || (voiceOptions || []).includes(value));
   return (
     <div className="flex items-center gap-2">
       <span className="text-xs font-semibold text-slate-600 w-20 truncate">{name}</span>
