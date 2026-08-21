@@ -260,6 +260,10 @@ export default function EpisodesPage() {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
   const socketRef = useRef(null);
+  // Mirrors selectedSeriesId for the socket effect below, which only runs once (empty deps, so
+  // the connection survives series switches) and would otherwise close over a stale series id.
+  const selectedSeriesIdRef = useRef(selectedSeriesId);
+  useEffect(() => { selectedSeriesIdRef.current = selectedSeriesId; }, [selectedSeriesId]);
 
   // Both tabs stay mounted permanently (see AppShell), so this page's own series list would
   // otherwise only ever be fetched once at initial app load — stale as soon as a series is
@@ -289,6 +293,29 @@ export default function EpisodesPage() {
   useEffect(() => {
     socketRef.current = io(API);
     const socket = socketRef.current;
+
+    // io.emit() on the backend only reaches clients connected at the exact moment a step
+    // finishes — any step that completes while this tab's socket happens to be disconnected
+    // (a network blip, the backend redeploying, a mobile browser suspending the connection while
+    // backgrounded) is silently gone for good; there's nothing server-side that redelivers it.
+    // Without this, the UI just freezes on whatever status it last heard until a manual page
+    // reload. socket.io-client auto-reconnects with backoff on its own, and fires 'connect' both
+    // on that first connection and every reconnect after — resyncing here means the moment the
+    // connection comes back, the UI catches up on its own, no reload needed.
+    socket.on('connect', () => {
+      const seriesId = selectedSeriesIdRef.current;
+      if (!seriesId) return;
+      axios.get(`${API}/api/youtube/episodes`, { params: { seriesId } })
+        .then(({ data }) => {
+          setEpisodes(data);
+          // Also overwrite the shared progress store with this authoritative status/statusDetail
+          // — a stale store entry from an earlier event that DID arrive would otherwise keep
+          // shadowing the freshly-fetched episode.status via the `live.status || episode.status`
+          // fallback in EpisodeCard, even after this refetch.
+          data.forEach((e) => setEpisodeProgress(e._id, { status: e.status, statusDetail: e.statusDetail || '' }));
+        })
+        .catch(() => {});
+    });
 
     socket.on('episode:progress', ({ episodeId, status, statusDetail }) => {
       setEpisodeProgress(episodeId, { status, statusDetail });
