@@ -165,6 +165,8 @@ const TRANSLATIONS = {
     'episodes.regenerateNarrationTitle': 'Redo every line\'s narration audio?',
     'episodes.regenerateNarrationMessage': 'Every narration line\'s audio will be re-recorded with the series\' current narrator voice. The script, text, and images are untouched. This can\'t be undone.',
     'episodes.regenerateNarrationConfirm': 'Redo all narration',
+    'episodes.reviewIntroLabel': '🎬 Opening title card — "{title}"',
+    'episodes.reviewIntroPlaceholder': 'Spoken intro line read before the story starts…',
   },
   th: {
     'nav.series': 'ซีรีส์',
@@ -327,6 +329,8 @@ const TRANSLATIONS = {
     'episodes.regenerateNarrationTitle': 'อัดเสียงบรรยายทุกบรรทัดใหม่หรือไม่?',
     'episodes.regenerateNarrationMessage': 'เสียงบรรยายทุกบรรทัดจะถูกอัดใหม่ด้วยเสียงผู้บรรยายปัจจุบันของซีรีส์ สคริปต์ ข้อความ และภาพจะไม่ถูกแตะต้อง ย้อนกลับไม่ได้',
     'episodes.regenerateNarrationConfirm': 'อัดเสียงใหม่ทั้งหมด',
+    'episodes.reviewIntroLabel': '🎬 การ์ดชื่อเรื่องเปิด — "{title}"',
+    'episodes.reviewIntroPlaceholder': 'ประโยคเปิดที่พูดก่อนเริ่มเรื่อง…',
   },
 };
 

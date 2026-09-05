@@ -36,6 +36,7 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
     ...s,
     narration: s.narration.map((n) => ({ ...n })),
   })));
+  const [intro, setIntro] = useState(() => ({ text: episode.intro?.text || '', audioUrl: episode.intro?.audioUrl || null }));
   const [saving, setSaving] = useState(false);
   const [approving, setApproving] = useState(false);
   const [error, setError] = useState('');
@@ -62,7 +63,7 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
   }, [cooldownUntil]);
 
   const original = episode.scenes;
-  const hasEdits = JSON.stringify(scenes.map((s) => ({
+  const hasEdits = intro.text.trim() !== (episode.intro?.text || '').trim() || JSON.stringify(scenes.map((s) => ({
     backgroundPrompt: s.backgroundPrompt,
     narration: s.narration.map((n) => ({ text: n.text })),
   }))) !== JSON.stringify(original.map((s) => ({
@@ -70,6 +71,9 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
     narration: s.narration.map((n) => ({ text: n.text })),
   })));
 
+  function updateIntro(value) {
+    setIntro((prev) => ({ ...prev, text: value }));
+  }
   function updateScenePrompt(order, value) {
     setScenes((prev) => prev.map((s) => (s.order === order ? { ...s, backgroundPrompt: value } : s)));
   }
@@ -171,6 +175,7 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
     setError('');
     try {
       const { data } = await axios.put(`${API}/api/youtube/episodes/${episode._id}/scenes`, {
+        intro: { text: intro.text },
         scenes: scenes.map((s) => ({
           order: s.order,
           backgroundPrompt: s.backgroundPrompt,
@@ -277,6 +282,19 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
             {t('episodes.reviewRegenerateScript')}
           </button>
         </div>
+      </div>
+
+      <div className="bg-slate-900 rounded-lg p-2.5 ring-1 ring-inset ring-violet-900 flex flex-col gap-1.5">
+        <p className="text-[10px] font-bold text-violet-400 uppercase tracking-wide">
+          {t('episodes.reviewIntroLabel', { title: episode.title || '' })}
+        </p>
+        {intro.audioUrl && <audio controls src={intro.audioUrl} className="h-6 w-full" />}
+        <input
+          type="text" value={intro.text}
+          onChange={(e) => updateIntro(e.target.value)}
+          placeholder={t('episodes.reviewIntroPlaceholder')}
+          className="text-xs px-2 py-1 border border-slate-700 rounded-lg outline-none focus:border-reel"
+        />
       </div>
 
       <div className="flex flex-col gap-3 max-h-80 overflow-y-auto pr-1">
