@@ -4,8 +4,6 @@ import { useLanguage } from '../utils/i18n';
 import { setEpisodeProgress } from '../utils/episodeProgressStore';
 import ConfirmDialog from './ConfirmDialog';
 
-const EXPRESSIONS = ['neutral', 'happy', 'sad', 'surprised', 'angry'];
-
 // Matches Pollinations' anonymous-tier rate limit (~1 request/15s, see backend/utils/youtube/pollinations.js).
 const PAGE_COOLDOWN_MS = 15000;
 
@@ -60,10 +58,10 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
   const original = episode.scenes;
   const hasEdits = JSON.stringify(scenes.map((s) => ({
     backgroundPrompt: s.backgroundPrompt,
-    narration: s.narration.map((n) => ({ text: n.text, expression: n.expression })),
+    narration: s.narration.map((n) => ({ text: n.text })),
   }))) !== JSON.stringify(original.map((s) => ({
     backgroundPrompt: s.backgroundPrompt,
-    narration: s.narration.map((n) => ({ text: n.text, expression: n.expression })),
+    narration: s.narration.map((n) => ({ text: n.text })),
   })));
 
   function updateScenePrompt(order, value) {
@@ -134,7 +132,7 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
         scenes: scenes.map((s) => ({
           order: s.order,
           backgroundPrompt: s.backgroundPrompt,
-          narration: s.narration.map((n) => ({ text: n.text, expression: n.expression })),
+          narration: s.narration.map((n) => ({ text: n.text })),
         })),
       });
       // A background/text edit that actually invalidates something re-enters the pipeline
@@ -145,8 +143,8 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
       // so there's no "still hear the old line" case once this fires. Detected by comparing
       // against this episode's own prior status (not a hardcoded 'review') since edits can now
       // also be saved from "script"/"images"/"rendered" — a status *change* means the backend
-      // decided a step needs to redo; unchanged means it was just cosmetic (e.g. only an
-      // expression) or an edit at "script" that nothing downstream has been generated for yet.
+      // decided a step needs to redo; unchanged means an edit at "script" that nothing downstream
+      // has been generated for yet.
       // Seed the shared progress store immediately (rather than waiting for the first socket
       // update, which can lag a beat behind this response) so the episode card shows "working"
       // instead of a misleading idle "click to start" button for that gap.
@@ -236,16 +234,7 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
             />
             {scene.narration.map((line, i) => (
               <div key={i} className="flex flex-col gap-1 pl-2 border-l-2 border-slate-800">
-                <div className="flex items-center gap-2">
-                  <select
-                    value={line.expression}
-                    onChange={(e) => updateLine(scene.order, i, 'expression', e.target.value)}
-                    className="text-[10px] px-1.5 py-0.5 border border-slate-700 rounded-md outline-none"
-                  >
-                    {EXPRESSIONS.map((ex) => <option key={ex} value={ex}>{ex}</option>)}
-                  </select>
-                  {line.audioUrl && <audio controls src={line.audioUrl} className="h-6 flex-1 min-w-0" />}
-                </div>
+                {line.audioUrl && <audio controls src={line.audioUrl} className="h-6 w-full" />}
                 <input
                   type="text" value={line.text}
                   onChange={(e) => updateLine(scene.order, i, 'text', e.target.value)}
