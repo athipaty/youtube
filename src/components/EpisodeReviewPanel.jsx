@@ -46,6 +46,12 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
   const [confirmingRegenScript, setConfirmingRegenScript] = useState(false);
   const [regeneratingScript, setRegeneratingScript] = useState(false);
   const [regenScriptError, setRegenScriptError] = useState(null);
+  const [confirmingRegenImages, setConfirmingRegenImages] = useState(false);
+  const [regeneratingImages, setRegeneratingImages] = useState(false);
+  const [regenImagesError, setRegenImagesError] = useState(null);
+  const [confirmingRegenNarration, setConfirmingRegenNarration] = useState(false);
+  const [regeneratingNarration, setRegeneratingNarration] = useState(false);
+  const [regenNarrationError, setRegenNarrationError] = useState(null);
 
   // Re-renders once a second while any scene is cooling down so the countdown on its button stays
   // live; stops itself once every cooldown lapses instead of ticking forever in the background.
@@ -124,6 +130,42 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
     }
   }
 
+  // Redo every scene's image, keeping the script/text untouched (unlike regenerateScript above,
+  // which throws out everything). Backend drops the episode back to "script" and re-runs stepImages
+  // for the whole thing, so this always replaces `episode` wholesale via onUpdated rather than
+  // patching local `scenes` state piecemeal like the per-scene regenerateImage above does.
+  async function regenerateAllImages() {
+    setRegeneratingImages(true);
+    setRegenImagesError(null);
+    try {
+      const { data } = await axios.post(`${API}/api/youtube/episodes/${episode._id}/regenerate-images`);
+      setConfirmingRegenImages(false);
+      setEpisodeProgress(data._id, { status: data.status, statusDetail: t('episodes.advancing') });
+      onUpdated(data);
+    } catch (err) {
+      setRegenImagesError(err.response?.data?.error || 'Failed to regenerate images');
+    } finally {
+      setRegeneratingImages(false);
+    }
+  }
+
+  // Redo every narration line's audio, keeping the text untouched — e.g. after changing the
+  // series' narratorVoice, so an already-generated episode can catch up without editing every line.
+  async function regenerateAllNarration() {
+    setRegeneratingNarration(true);
+    setRegenNarrationError(null);
+    try {
+      const { data } = await axios.post(`${API}/api/youtube/episodes/${episode._id}/regenerate-narration`);
+      setConfirmingRegenNarration(false);
+      setEpisodeProgress(data._id, { status: data.status, statusDetail: t('episodes.advancing') });
+      onUpdated(data);
+    } catch (err) {
+      setRegenNarrationError(err.response?.data?.error || 'Failed to regenerate narration');
+    } finally {
+      setRegeneratingNarration(false);
+    }
+  }
+
   async function save() {
     setSaving(true);
     setError('');
@@ -183,18 +225,58 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
         onConfirm={regenerateScript}
         onCancel={() => { setConfirmingRegenScript(false); setRegenScriptError(null); }}
       />
+      <ConfirmDialog
+        open={confirmingRegenImages}
+        title={t('episodes.regenerateImagesTitle')}
+        message={t('episodes.regenerateImagesMessage')}
+        confirmLabel={t('episodes.regenerateImagesConfirm')}
+        loading={regeneratingImages}
+        error={regenImagesError}
+        onConfirm={regenerateAllImages}
+        onCancel={() => { setConfirmingRegenImages(false); setRegenImagesError(null); }}
+      />
+      <ConfirmDialog
+        open={confirmingRegenNarration}
+        title={t('episodes.regenerateNarrationTitle')}
+        message={t('episodes.regenerateNarrationMessage')}
+        confirmLabel={t('episodes.regenerateNarrationConfirm')}
+        loading={regeneratingNarration}
+        error={regenNarrationError}
+        onConfirm={regenerateAllNarration}
+        onCancel={() => { setConfirmingRegenNarration(false); setRegenNarrationError(null); }}
+      />
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-xs font-bold text-violet-100">{t(headingKey)}</p>
           <p className="text-[11px] text-violet-400">{t(subtitleKey)}</p>
         </div>
-        <button
-          type="button"
-          onClick={() => setConfirmingRegenScript(true)}
-          className="text-[11px] font-semibold px-3 py-1 rounded-full ring-1 ring-inset ring-violet-800 text-violet-500 hover:text-red-400 hover:ring-red-800 transition-colors whitespace-nowrap"
-        >
-          {t('episodes.reviewRegenerateScript')}
-        </button>
+        <div className="flex items-center gap-1.5 flex-wrap justify-end">
+          {['images', 'review', 'rendered'].includes(episode.status) && (
+            <button
+              type="button"
+              onClick={() => setConfirmingRegenImages(true)}
+              className="text-[11px] font-semibold px-3 py-1 rounded-full ring-1 ring-inset ring-violet-800 text-violet-500 hover:text-red-400 hover:ring-red-800 transition-colors whitespace-nowrap"
+            >
+              {t('episodes.reviewRegenerateImages')}
+            </button>
+          )}
+          {['review', 'rendered'].includes(episode.status) && (
+            <button
+              type="button"
+              onClick={() => setConfirmingRegenNarration(true)}
+              className="text-[11px] font-semibold px-3 py-1 rounded-full ring-1 ring-inset ring-violet-800 text-violet-500 hover:text-red-400 hover:ring-red-800 transition-colors whitespace-nowrap"
+            >
+              {t('episodes.reviewRegenerateNarration')}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setConfirmingRegenScript(true)}
+            className="text-[11px] font-semibold px-3 py-1 rounded-full ring-1 ring-inset ring-violet-800 text-violet-500 hover:text-red-400 hover:ring-red-800 transition-colors whitespace-nowrap"
+          >
+            {t('episodes.reviewRegenerateScript')}
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-col gap-3 max-h-80 overflow-y-auto pr-1">
