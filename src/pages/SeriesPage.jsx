@@ -13,11 +13,25 @@ const VOICE_LOCALES = [
   { value: 'th-TH', label: 'ไทย (Thai)' },
 ];
 
-function CharacterCard({ character, onDelete, onEditCharacter }) {
+function CharacterCard({ character, onDelete, onEditCharacter, onRegenerateReference }) {
   const { t } = useLanguage();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
+  const [regenerating, setRegenerating] = useState(false);
+  const [regenError, setRegenError] = useState(null);
+
+  async function handleRegenerateReference() {
+    setRegenerating(true);
+    setRegenError(null);
+    try {
+      await onRegenerateReference(character._id);
+    } catch (err) {
+      setRegenError(err.response?.data?.error || 'Failed to regenerate reference image');
+    } finally {
+      setRegenerating(false);
+    }
+  }
 
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(character.name);
@@ -121,7 +135,28 @@ function CharacterCard({ character, onDelete, onEditCharacter }) {
           </div>
         </form>
       ) : (
-        <p className="text-xs text-slate-500">{character.description}</p>
+        <>
+          <p className="text-xs text-slate-500">{character.description}</p>
+          {character.referenceImageUrl && (
+            <div className="flex items-center gap-2 mt-1">
+              <img
+                src={character.referenceImageUrl} alt=""
+                className="w-12 h-12 rounded-lg object-cover ring-1 ring-inset ring-slate-700"
+              />
+              <div className="flex flex-col gap-0.5">
+                <button
+                  type="button"
+                  onClick={handleRegenerateReference}
+                  disabled={regenerating}
+                  className="self-start text-[11px] font-semibold px-3 py-1 rounded-full ring-1 ring-inset ring-slate-700 text-slate-400 hover:text-reel hover:ring-reel/40 disabled:opacity-50 transition-colors whitespace-nowrap"
+                >
+                  {regenerating ? t('series.regeneratingReference') : t('series.regenerateReference')}
+                </button>
+                {regenError && <p className="text-[10px] text-red-400">{regenError}</p>}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -239,6 +274,11 @@ export default function SeriesPage() {
   async function deleteCharacter(characterId) {
     await axios.delete(`${API}/api/youtube/characters/${characterId}`);
     setCharacters(prev => prev.filter(c => c._id !== characterId));
+  }
+
+  async function regenerateCharacterReference(characterId) {
+    const { data } = await axios.post(`${API}/api/youtube/characters/${characterId}/regenerate-reference`);
+    setCharacters(prev => prev.map(c => c._id === characterId ? data : c));
   }
 
   async function handleConfirmDeleteSeries() {
@@ -437,6 +477,7 @@ export default function SeriesPage() {
                   character={c}
                   onDelete={deleteCharacter}
                   onEditCharacter={editCharacter}
+                  onRegenerateReference={regenerateCharacterReference}
                 />
               ))}
             </div>
