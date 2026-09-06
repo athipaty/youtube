@@ -6,6 +6,7 @@ import StepProgressDots from '../components/StepProgressDots';
 import EpisodePlayer from '../components/EpisodePlayer';
 import EpisodeReviewPanel from '../components/EpisodeReviewPanel';
 import ConfirmDialog from '../components/ConfirmDialog';
+import UploadOptionsDialog from '../components/UploadOptionsDialog';
 import { setEpisodeProgress, useEpisodeProgress } from '../utils/episodeProgressStore';
 import { useLanguage } from '../utils/i18n';
 
@@ -39,6 +40,7 @@ function EpisodeCard({ episode, onRetry, onDelete, onUpdate, onUploadYoutube, on
   const [deleteError, setDeleteError] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
+  const [confirmingUpload, setConfirmingUpload] = useState(false);
   const [rerendering, setRerendering] = useState(false);
   const [rerenderError, setRerenderError] = useState(null);
   // A manual step's status doesn't change until the whole step finishes (statusDetail updates
@@ -78,11 +80,12 @@ function EpisodeCard({ episode, onRetry, onDelete, onUpdate, onUploadYoutube, on
     ).values()
   );
 
-  async function handleUploadYoutube() {
+  async function handleUploadYoutube(options) {
     setUploading(true);
     setUploadError(null);
     try {
-      await onUploadYoutube(episode._id);
+      await onUploadYoutube(episode._id, options);
+      setConfirmingUpload(false);
     } catch (err) {
       setUploadError(err.response?.data?.error || 'Failed to start YouTube upload');
       setUploading(false);
@@ -131,6 +134,13 @@ function EpisodeCard({ episode, onRetry, onDelete, onUpdate, onUploadYoutube, on
         error={deleteError}
         onConfirm={handleConfirmDelete}
         onCancel={() => { setConfirmingDelete(false); setDeleteError(null); }}
+      />
+      <UploadOptionsDialog
+        open={confirmingUpload}
+        loading={uploading}
+        error={uploadError}
+        onConfirm={handleUploadYoutube}
+        onCancel={() => { setConfirmingUpload(false); setUploadError(null); }}
       />
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-bold text-slate-50">
@@ -204,7 +214,7 @@ function EpisodeCard({ episode, onRetry, onDelete, onUpdate, onUploadYoutube, on
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-2 flex-wrap">
             <button
-              onClick={handleUploadYoutube}
+              onClick={() => setConfirmingUpload(true)}
               disabled={uploading || rerendering}
               className="self-start px-4 py-2 bg-gradient-to-b from-violet-400 to-reel text-white font-bold text-sm rounded-xl hover:brightness-105 active:scale-[0.98] disabled:opacity-50 transition-all shadow-soft"
             >
@@ -218,7 +228,6 @@ function EpisodeCard({ episode, onRetry, onDelete, onUpdate, onUploadYoutube, on
               {rerendering ? t('episodes.rerendering') : t('episodes.rerender')}
             </button>
           </div>
-          {uploadError && <p className="text-xs text-red-400">{uploadError}</p>}
           {rerenderError && <p className="text-xs text-red-400">{rerenderError}</p>}
         </div>
       )}
@@ -367,8 +376,8 @@ export default function EpisodesPage() {
     setEpisodes(prev => prev.filter(e => e._id !== episodeId));
   }
 
-  async function uploadEpisodeToYoutube(episodeId) {
-    const { data } = await axios.post(`${API}/api/youtube/episodes/${episodeId}/upload-youtube`);
+  async function uploadEpisodeToYoutube(episodeId, options) {
+    const { data } = await axios.post(`${API}/api/youtube/episodes/${episodeId}/upload-youtube`, options);
     setEpisodes(prev => prev.map(e => e._id === episodeId ? data : e));
   }
 
