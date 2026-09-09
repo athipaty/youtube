@@ -53,6 +53,9 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
   const [confirmingRegenNarration, setConfirmingRegenNarration] = useState(false);
   const [regeneratingNarration, setRegeneratingNarration] = useState(false);
   const [regenNarrationError, setRegenNarrationError] = useState(null);
+  const [confirmingAnimateOrder, setConfirmingAnimateOrder] = useState(null); // scene order, or null
+  const [animatingKey, setAnimatingKey] = useState(null); // scene order currently animating
+  const [animateErrors, setAnimateErrors] = useState({}); // order -> error message
 
   // Re-renders once a second while any scene is cooling down so the countdown on its button stays
   // live; stops itself once every cooldown lapses instead of ticking forever in the background.
@@ -111,6 +114,30 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
     } finally {
       setRegeneratingKey(null);
       setCooldownUntil((prev) => ({ ...prev, [order]: Date.now() + PAGE_COOLDOWN_MS }));
+    }
+  }
+
+  // Opt-in, real-money upgrade for one scene: generates a short real-motion clip from its already-
+  // generated image (Kling 2.5 Turbo Pro, ~$0.35-$0.70/clip) instead of leaving it as a static
+  // pan/zoomed picture. Merges just the new clip fields into local `scenes` state, same reasoning
+  // as regenerateImage above (onUpdated would remount this whole panel and drop unsaved edits
+  // elsewhere).
+  async function animateScene(order) {
+    setAnimatingKey(order);
+    setAnimateErrors((prev) => ({ ...prev, [order]: null }));
+    try {
+      const { data } = await axios.post(`${API}/api/youtube/episodes/${episode._id}/scenes/${order}/animate`);
+      const updated = data.scenes.find((s) => s.order === order);
+      if (updated) {
+        setScenes((prev) => prev.map((s) => (s.order === order
+          ? { ...s, animatedClipUrl: updated.animatedClipUrl, animatedClipDurationMs: updated.animatedClipDurationMs }
+          : s)));
+      }
+      setConfirmingAnimateOrder(null);
+    } catch (err) {
+      setAnimateErrors((prev) => ({ ...prev, [order]: err.response?.data?.error || 'Failed to animate scene' }));
+    } finally {
+      setAnimatingKey(null);
     }
   }
 
@@ -250,6 +277,16 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
         onConfirm={regenerateAllNarration}
         onCancel={() => { setConfirmingRegenNarration(false); setRegenNarrationError(null); }}
       />
+      <ConfirmDialog
+        open={confirmingAnimateOrder !== null}
+        title={t('episodes.animateSceneTitle')}
+        message={t('episodes.animateSceneMessage')}
+        confirmLabel={t('episodes.animateSceneConfirm')}
+        loading={animatingKey === confirmingAnimateOrder}
+        error={confirmingAnimateOrder !== null ? animateErrors[confirmingAnimateOrder] : null}
+        onConfirm={() => animateScene(confirmingAnimateOrder)}
+        onCancel={() => setConfirmingAnimateOrder(null)}
+      />
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-xs font-bold text-violet-100">{t(headingKey)}</p>
@@ -326,6 +363,32 @@ export default function EpisodeReviewPanel({ episode, onUpdated }) {
                 </div>
               );
             })()}
+            {scene.imageUrl && (
+              <div className="flex flex-col gap-1">
+                {scene.animatedClipUrl && (
+                  <video
+                    src={scene.animatedClipUrl} controls muted loop
+                    className="w-full rounded-md ring-1 ring-inset ring-violet-800"
+                  />
+                )}
+                <button
+                  type="button"
+                  disabled={animatingKey === scene.order || hasPromptEdit(scene)}
+                  onClick={() => setConfirmingAnimateOrder(scene.order)}
+                  title={hasPromptEdit(scene) ? t('episodes.reviewPageSaveFirst') : undefined}
+                  className="self-start text-[10px] font-semibold px-2.5 py-1 rounded-full ring-1 ring-inset ring-violet-800 text-violet-400 hover:text-reel hover:ring-reel/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                >
+                  {animatingKey === scene.order
+                    ? t('episodes.animatingScene')
+                    : scene.animatedClipUrl
+                    ? t('episodes.reanimateScene')
+                    : t('episodes.animateScene')}
+                </button>
+                {animateErrors[scene.order] && !confirmingAnimateOrder && (
+                  <p className="text-[10px] text-red-400">{animateErrors[scene.order]}</p>
+                )}
+              </div>
+            )}
             <textarea
               value={scene.backgroundPrompt}
               onChange={(e) => updateScenePrompt(scene.order, e.target.value)}
